@@ -1,4 +1,4 @@
-﻿#define _CRT_SECURE_NO_WARNINGS /* for vs */
+#define _CRT_SECURE_NO_WARNINGS /* for vs */
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -73,7 +73,7 @@ int commandmodel = 0;
 int shownumber = 1;
 int showlog = 1;
 int showanalysis = 1;
-int showclock = 1;
+int showclock = 0;
 int showforbidden = 1;
 int showtoolbarboth = 1;
 int showsmallfont = 0;
@@ -1579,7 +1579,7 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 	gtk_entry_set_width_chars(GTK_ENTRY(entrymaxnode), 6);
 	sprintf(text, "%d", maxnode/1000);
 	gtk_entry_set_text(GTK_ENTRY(entrymaxnode), text);
-	labelmaxnode[1] = gtk_label_new(language==0?"M":_T(clanguage[27]));
+	labelmaxnode[1] = gtk_label_new(language==0?"K":_T(clanguage[27]));
 	gtk_misc_set_alignment(GTK_MISC(labelmaxnode[0]), 1, 0.5);
 	gtk_misc_set_alignment(GTK_MISC(labelmaxnode[1]), 0, 0.5);
 
@@ -1756,7 +1756,7 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 				if(is_integer(ptext))
 				{
 					sscanf(ptext, "%d", &timeoutmatch);
-					if(timeoutmatch > 100000) timeoutmatch = 100000;
+					if(timeoutmatch > 1000000) timeoutmatch = 1000000;
 					if(timeoutmatch < 1) timeoutmatch = 1;
 					timeoutmatch *= 1000;
 					if(timeoutmatch < timeoutturn) timeoutmatch = timeoutturn;
@@ -3896,6 +3896,22 @@ void execute_command(gchar *command)
 	{
 		send_command("yxprintfeature\n");
 	}
+	else if (yixin_strnicmp(command, "send board", 10) == 0)
+	{
+		gchar _command[80];
+		sprintf(_command, "start %d %d\n", boardsizew, boardsizeh);
+		send_command(_command);
+		sprintf(_command, "yxboard\n");
+		send_command(_command);
+		for (i = 0; i<piecenum; i++)
+		{
+			sprintf(_command, "%d,%d,%d\n", movepath[i] / boardsizew,
+				movepath[i] % boardsizew, piecenum % 2 == i % 2 ? 1 : 2);
+			send_command(_command);
+		}
+		sprintf(_command, "done\n");
+		send_command(_command);
+	}
 	else
 	{
 		if (language)
@@ -4858,6 +4874,9 @@ void create_windowmain()
 	}
 
 	textlog = gtk_text_view_new();
+	PangoFontDescription *fontDesc = pango_font_description_from_string("Sarasa Fixed SC 11");
+    gtk_widget_modify_font(textlog, fontDesc);
+
 	buffertextlog = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textlog));
 	scrolledtextlog = gtk_scrolled_window_new(NULL, NULL);
 	gtk_container_add(GTK_CONTAINER(scrolledtextlog), textlog);
@@ -5554,7 +5573,7 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		if (timeoutturn == 0) timeoutturn = 100;
 		if(timeoutturn < 0 || timeoutturn > 100000000) timeoutturn = 10000;
 		timeoutmatch = read_int_from_file(in) * 1000;
-		if(timeoutmatch <= 0 || timeoutmatch > 100000000) timeoutmatch = 2000000;
+		if(timeoutmatch <= 0 || timeoutmatch > 1000000000) timeoutmatch = 2000000;
 		maxdepth = read_int_from_file(in);
 		if(maxdepth < 2 || maxdepth > boardsizeh*boardsizew) maxdepth = boardsizeh*boardsizew;
 		maxnode = read_int_from_file(in);

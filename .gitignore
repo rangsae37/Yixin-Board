@@ -20,3 +20,4 @@ gtkrc*
 !/default_settings/*.txt
 !/function/*.txt
 Yixin
+*.o
