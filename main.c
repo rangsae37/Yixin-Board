@@ -99,6 +99,7 @@ GdkPixbuf *pixbufboardchar[9][14][128][2];
 
 int imgtypeboard[MAX_SIZE][MAX_SIZE];
 char piecepicname[80] = "piece.bmp";
+char fontname[120] = "";
 /* log */
 GtkWidget *textlog;
 GtkTextBuffer *buffertextlog, *buffertextcommand;
@@ -4874,7 +4875,7 @@ void create_windowmain()
 	}
 
 	textlog = gtk_text_view_new();
-	PangoFontDescription *fontDesc = pango_font_description_from_string("Sarasa Fixed SC 11");
+	PangoFontDescription *fontDesc = pango_font_description_from_string(fontname);
     gtk_widget_modify_font(textlog, fontDesc);
 
 	buffertextlog = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textlog));
@@ -5729,6 +5730,13 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 	else
 	{
 		language = 0;
+	}
+
+	if((in = fopen("font.txt", "r")) != NULL)
+	{
+		fgets(s, sizeof(s), in);
+		s[strcspn(s, "\n")] = 0;
+		strcpy(fontname, s);
 	}
 }
 static void childexit_watch(GPid pid, gint status, gpointer *data)
