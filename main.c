@@ -10,7 +10,7 @@
 
 typedef long long I64;
 #define MAX_SIZE 22
-#define CAUTION_NUM 4  //0..CAUTION_NUM
+#define CAUTION_NUM 5  //0..CAUTION_NUM
 #define MIN_SPLIT_DEPTH 5
 #define MAX_SPLIT_DEPTH 20
 #define MAX_TOOLBAR_ITEM 32
@@ -95,7 +95,7 @@ GtkWidget *labelboard[2][MAX_SIZE];
 GtkWidget *vboxwindowmain;
 GdkPixbuf *pixbufboard[9][14];
 GdkPixbuf *pixbufboardnumber[9][14][MAX_SIZE*MAX_SIZE+1][2];
-GdkPixbuf *pixbufboardchar[9][14][128][2];
+GdkPixbuf *pixbufboardchar[9][14][128+100+100+100][2];
 
 int imgtypeboard[MAX_SIZE][MAX_SIZE];
 char piecepicname[80] = "piece.bmp";
@@ -457,7 +457,7 @@ void show_thanklist()
 	printf_log("\n");
 }
 
-GdkPixbuf *draw_overlay(GdkPixbuf *pb, int w, int h, gchar *text, char *color, int type)
+GdkPixbuf *draw_overlay_scaled(GdkPixbuf *pb, int w, int h, gchar *text, char *color, char *weight, float scale)
 {
 	GdkPixmap *pm;
 	GdkGC *gc;
@@ -475,22 +475,20 @@ GdkPixbuf *draw_overlay(GdkPixbuf *pb, int w, int h, gchar *text, char *color, i
 	gtk_widget_realize(scratch);
 	layout = gtk_widget_create_pango_layout(scratch, NULL);
 	gtk_widget_destroy(scratch);
-	if (type == 0)
-		sprintf(format, "<b><span foreground='%s' size='%d'>%%s</span></b>", color, 11000);
-	else
-		sprintf(format, "<b><span foreground='%s' size='%d'>%%s</span></b>", color, 9000);
+	sprintf(format, "<span foreground='%s' weight='%s' size='%d'>%%s</span>", color, weight, (int)((showsmallfont ? 9000 : 11000) * scale));
 	markup = g_strdup_printf(format, text);
 	pango_layout_set_markup(layout, markup, -1);
 	g_free(markup);
-	if (type == 0)
-		gdk_draw_layout(pm, gc, w / 2 - (int)(strlen(text) * 4 * hdpiscale), h / 2 - (int)(10* hdpiscale), layout);
-	else
-		gdk_draw_layout(pm, gc, w / 2 - (int)(strlen(text) * 4 * hdpiscale), h / 2 - (int)(8 * hdpiscale), layout);
+	gdk_draw_layout(pm, gc, w / 2 - (int)(strlen(text) * 4 * hdpiscale), h / 2 - (int)((showsmallfont ? 8 : 10) * hdpiscale * scale), layout);
 	g_object_unref(layout);
 	ret = gdk_pixbuf_get_from_drawable(NULL, pm, NULL, 0, 0, 0, 0, w, h);
 	g_object_unref(pm);
 	g_object_unref(gc);
 	return ret;
+}
+
+GdkPixbuf *draw_overlay(GdkPixbuf *pb, int w, int h, gchar *text, char *color) {
+	return draw_overlay_scaled(pb, w, h, text, color, "bold", 1.0f);
 }
 
 void send_command(char *command)
@@ -499,7 +497,6 @@ void send_command(char *command)
 	g_io_channel_write_chars(iochannelin, command, -1, &size, NULL);
 	g_io_channel_flush(iochannelin, NULL);
 
-	//printf_log(command); //for debug
 	if (debuglog != NULL)
 	{
 		fprintf(debuglog, "SEND_COMMAND [%s,%s,%s,%s]: %s\n",
@@ -514,14 +511,21 @@ void send_command(char *command)
 
 int swap2done = 0;
 
+int boardtagclear = 0;
+void clear_board_tag() {
+	if (boardtagclear == 0) {
+		boardtagclear = 1;
+		memset(boardtag, 0, sizeof(boardtag));
+	}
+}
+
 int refreshboardflag = 0; //it is set to 1 when making the 5th move under soosorv rule, otherwise, 0
 int refreshboardflag2 = 0; //it is set to 1 when refreshboardflag has been set to 1
-void refresh_board()
+void refresh_board_area(int x0, int y0, int x1, int y1)
 {
-	int i, j;
-	for (i = 0; i < boardsizeh; i++)
+	for (int i = y0; i < y1; i++)
 	{
-		for (j = 0; j < boardsizew; j++)
+		for (int j = x0; j < x1; j++)
 		{
 			if (board[i][j] == 0)
 			{
@@ -567,29 +571,62 @@ void refresh_board()
 						x = 1;
 					}
 					
-					if (boardtag[i][j] < 128)
-					{
-						if (pixbufboardchar[y][x][boardtag[i][j]][piecenum % 2] == NULL)
-						{
-							sprintf(n, "%c", boardtag[i][j] == 'w' ? 'W' : (boardtag[i][j] == 'l' ? 'L' : boardtag[i][j]));
-							pixbufboardchar[y][x][boardtag[i][j]][piecenum % 2] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, piecenum % 2 ? "#FFFFFF" : "#000000", showsmallfont);
-						}
-						gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardchar[y][x][boardtag[i][j]][piecenum % 2]);
 
+					#define UPPERCASE_TAG(tag) ((tag) == 'w' ? 'W' : ((tag) == 'l' ? 'L' : ((tag) == 'd' ? 'D' : (tag))))
+					int tag = boardtag[i][j];
+					if (tag < 128)
+					{
+						if (pixbufboardchar[y][x][tag][piecenum % 2] == NULL)
+						{
+							sprintf(n, "%c", UPPERCASE_TAG(tag));
+							pixbufboardchar[y][x][tag][piecenum % 2] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, piecenum % 2 ? "#FFFFFF" : "#000000");
+						}
+						gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardchar[y][x][tag][piecenum % 2]);
 					}
 					else
 					{
-						if (boardtag[i][j] == 'w')
-							sprintf(n, "W");
-						else if (boardtag[i][j] == 'l')
-							sprintf(n, "L");
-						else if (boardtag[i][j] / 256 == 0)
-							sprintf(n, "%c", boardtag[i][j]);
+						int first = 0; // first character of the tag
+						float scale = 0.87f;
+						if (tag >> 16 == 0)
+							sprintf(n, "%c%c", first = UPPERCASE_TAG(tag / 256), tag % 256);
+						else if (tag >> 24 == 0)
+							sprintf(n, "%c%c%c", first = UPPERCASE_TAG(tag / 65536), tag / 256 % 256, tag % 256);
 						else
-						{
-							sprintf(n, "%c%c", boardtag[i][j] / 256, boardtag[i][j] % 256);
+							sprintf(n, "%c%c%c%c", first = UPPERCASE_TAG(tag / 16777216), tag / 65536 % 256, tag / 256 % 256, tag % 256), scale = 0.77f;
+
+						const char* color = piecenum % 2 ? "#FFFFFF" : "#000000";
+						const char* weight = "normal";
+						if (first == 'W')
+							color = "#EF0F0F", weight = "bold";
+						else if (first == 'L' || first == 'D')
+							weight = "bold";
+
+						if (first == 'W' || first == 'L') {
+							int step = atoi(n+1);
+							if (step >= 0 && step < 100) {
+								// use cached Win/Lose pixbuf
+								int idx = step + 100 * (first == 'L') + 128;
+								if (pixbufboardchar[y][x][idx][piecenum % 2] == NULL) {
+									pixbufboardchar[y][x][idx][piecenum % 2] = draw_overlay_scaled(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, color, weight, scale);
+								}
+								gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardchar[y][x][idx][piecenum % 2]);
+								continue;
+							}
+						} else if (tag % 256 == '%') {
+							scale = 0.9f;
+							int winrate = atoi(n);
+							if (winrate >= 0 && winrate < 100) {
+								// use cached Winrate pixbuf
+								int idx = winrate + 100 * 2 + 128;
+								if (pixbufboardchar[y][x][idx][piecenum % 2] == NULL) {
+									pixbufboardchar[y][x][idx][piecenum % 2] = draw_overlay_scaled(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, color, weight, scale);
+								}
+								gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardchar[y][x][idx][piecenum % 2]);
+								continue;
+							}
 						}
-						p = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, piecenum % 2 ? "#FFFFFF" : "#000000", showsmallfont);
+
+						p = draw_overlay_scaled(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, color, weight, scale);
 						gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), p);
 						g_object_unref(G_OBJECT(p));
 					}
@@ -635,14 +672,14 @@ void refresh_board()
 						sprintf(n, "%d", bn);
 						if(f || _f)
 						{
-							pixbufboardnumber[y][x][bn][1] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, "#FF0000", showsmallfont);
+							pixbufboardnumber[y][x][bn][1] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, "#FF0000");
 						}
 						else
 						{
 							if(boardnumber[i][j] % 2 == 1)
-								pixbufboardnumber[y][x][bn][0] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, "#FFFFFF", showsmallfont);
+								pixbufboardnumber[y][x][bn][0] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, "#FFFFFF");
 							else
-								pixbufboardnumber[y][x][bn][0] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, "#000000", showsmallfont);
+								pixbufboardnumber[y][x][bn][0] = draw_overlay(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, "#000000");
 						}
 					}
 					gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardnumber[y][x][bn][(f || _f)?1:0]);
@@ -656,21 +693,11 @@ void refresh_board()
 			}
 		}
 	}
-	
-	//for debug
-	/*
-	for(i=0; i<boardsizeh; i++)
-	{
-		for(j=0; j<boardsizew; j++)
-		{
-			if(i <= 8 && j <= 13)
-			{
-				gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboard[i][j]);
-			}
-		}
-	}
-	*/
 }
+void refresh_board() {
+	refresh_board_area(0, 0, boardsizew, boardsizeh);
+}
+
 int is_legal_move(int y, int x)
 {
 	return y>=0 && x>=0 && y<boardsizeh && x<boardsizew && board[y][x] == 0;
@@ -1663,9 +1690,9 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 	gtk_range_set_value(GTK_RANGE(scalethreads), threadnum);
 	gtk_widget_set_size_request(scalethreads, 100, -1);
 
-	scalesplitdepth = gtk_hscale_new_with_range(MIN_SPLIT_DEPTH, MAX_SPLIT_DEPTH, 1);
-	gtk_range_set_value(GTK_RANGE(scalesplitdepth), threadsplitdepth);
-	gtk_widget_set_size_request(scalesplitdepth, 100, -1);
+	//scalesplitdepth = gtk_hscale_new_with_range(MIN_SPLIT_DEPTH, MAX_SPLIT_DEPTH, 1);
+	//gtk_range_set_value(GTK_RANGE(scalesplitdepth), threadsplitdepth);
+	//gtk_widget_set_size_request(scalesplitdepth, 100, -1);
 
 	scalehash = gtk_hscale_new_with_range(0, maxhashsize, 1);
 	gtk_range_set_value(GTK_RANGE(scalehash), hashsize);
@@ -1700,9 +1727,10 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 		hbox[2] = gtk_hbox_new(FALSE, 0);
 		gtk_box_pack_start(GTK_BOX(hbox[2]), gtk_label_new(language == 0 ? "Number of Threads" : _T(clanguage[39])), FALSE, FALSE, 3);
 		gtk_box_pack_start(GTK_BOX(hbox[2]), scalethreads, FALSE, FALSE, 3);
-		hbox[4] = gtk_hbox_new(FALSE, 0);
-		gtk_box_pack_start(GTK_BOX(hbox[4]), gtk_label_new(language == 0 ? "Split Depth" : _T(clanguage[40])), FALSE, FALSE, 3);
-		gtk_box_pack_start(GTK_BOX(hbox[4]), scalesplitdepth, FALSE, FALSE, 3);
+		hbox[4] = NULL;
+		// hbox[4] = gtk_hbox_new(FALSE, 0);
+		// gtk_box_pack_start(GTK_BOX(hbox[4]), gtk_label_new(language == 0 ? "Split Depth" : _T(clanguage[40])), FALSE, FALSE, 3);
+		// gtk_box_pack_start(GTK_BOX(hbox[4]), scalesplitdepth, FALSE, FALSE, 3);
 	}
 
 	hbox[3] = gtk_hbox_new(FALSE, 0);
@@ -2670,7 +2698,7 @@ void change_piece(GtkWidget *widget, gpointer data)
 	}
 	while(p > 0 && movepath[p-1] == -1) p --;
 
-	memset(boardtag, 0, sizeof(boardtag));
+	clear_board_tag();
 
 	new_game(NULL, NULL);
 	for(i=0; i<p; i++) make_move(movepath[i]/boardsizew, movepath[i]%boardsizew);
@@ -2679,6 +2707,7 @@ void change_piece(GtkWidget *widget, gpointer data)
 
 	stop_thinking(widget, data);
 }
+
 void stop_thinking(GtkWidget *widget, gpointer data)
 {
 	char command[80];
@@ -4639,7 +4668,7 @@ void create_windowmain()
 	g_object_unref(pixbuf);
 	pixbuf = NULL;
 
-	showsmallfont = (size < 24);
+	showsmallfont = (size < 30);
 
 	menubar = gtk_menu_bar_new();
 	menugame = gtk_menu_new();
@@ -5267,10 +5296,9 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 		if (strncmp(string, "MESSAGE DATABASE", 16) == 0)
 		{
 			char *p = string + 16 + 1;
-			//printf_log("%s", string); //debug
 			if (*p == 'R') //"REFRESH"
 			{
-				memset(boardtag, 0, sizeof(boardtag));
+				clear_board_tag();
 			}
 			else if (*p == 'D') //"DONE"
 			{
@@ -5278,31 +5306,47 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			}
 			else if (*p == 'O') //"ONE"
 			{
-				int tag, val, depth;
-				sscanf(p+4, "%d %d %d", &tag, &val, &depth);
+				int tag, val, depth, bound;
+				sscanf(p+4, "%d %d %d %d", &tag, &val, &depth, &bound);
 				if (tag <= 0)
 					printf_log("tag=(null)  ");
 				else
 					printf_log("tag=%c  ", tag);
-				printf_log("val=%d  depth=%d\n", val, depth);
+				printf_log("val=%d  depth=%d  ", val, depth);
+				switch(bound)
+				{
+					default:
+						printf_log("bound=none\n");
+						break;
+					case 1:
+						printf_log("bound=upper\n");
+						break;
+					case 2:
+						printf_log("bound=lower\n");
+						break;
+					case 3:
+						printf_log("bound=exact\n");
+						break;
+				}
 			}
 			else
 			{
 				int tag;
-				sscanf(p, "%d %d %d %*d %*d", &y, &x, &tag);
+				sscanf(p, "%d %d %d %*d %*d %*d", &y, &x, &tag);
 				boardtag[y][x] = tag;
+				boardtagclear = 0;
 			}
 			g_free(string);
 			continue;
 		}
 		if(strncmp(string, "MESSAGE REALTIME", 16) == 0)
 		{
+			clear_board_tag();
 			char *p = string + 16 + 1;
 			if(*p == 'B') //"BEST"
 			{
 				p += 5;
 				sscanf(p, "%d,%d", &y, &x);
-				//printf_log("%d,%d\n", y, x);
 				memset(boardbest, 0, sizeof(boardbest));
 				boardbest[y][x] = 1;
 				refresh_board();
@@ -5317,7 +5361,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 				p += 5;
 				sscanf(p, "%d,%d", &y, &x);
 				boardlose[y][x] = 1;
-				refresh_board();
+				refresh_board_area(x, y, x + 1, y + 1);
 			}
 			else if(*p == 'P' && *(p+1) == 'V') //"PV"
 			{
@@ -5329,7 +5373,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 				p += 4;
 				sscanf(p, "%d,%d", &y, &x);
 				boardpos[y][x] = 2;
-				refresh_board();
+				refresh_board_area(x, y, x + 1, y + 1);
 			}
 			else if(*p == 'R') //"REFRESH"
 			{
@@ -5574,7 +5618,7 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		if (timeoutturn == 0) timeoutturn = 100;
 		if(timeoutturn < 0 || timeoutturn > 100000000) timeoutturn = 10000;
 		timeoutmatch = read_int_from_file(in) * 1000;
-		if(timeoutmatch <= 0 || timeoutmatch > 1000000000) timeoutmatch = 2000000;
+		if(timeoutmatch <= 0 || timeoutmatch > 1000000000) timeoutmatch = 1000000000;
 		maxdepth = read_int_from_file(in);
 		if(maxdepth < 2 || maxdepth > boardsizeh*boardsizew) maxdepth = boardsizeh*boardsizew;
 		maxnode = read_int_from_file(in);
