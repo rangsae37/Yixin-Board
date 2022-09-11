@@ -56,7 +56,7 @@ int boardnumber[MAX_SIZE][MAX_SIZE];
 int movepath[MAX_SIZE*MAX_SIZE];
 int forbid[MAX_SIZE][MAX_SIZE];
 int boardblock[MAX_SIZE][MAX_SIZE];
-int boardbest[MAX_SIZE][MAX_SIZE];
+int boardbestX = -1, boardbestY = -1;
 int boardlose[MAX_SIZE][MAX_SIZE];
 int boardpos[MAX_SIZE][MAX_SIZE];
 int boardtag[MAX_SIZE][MAX_SIZE];
@@ -607,7 +607,7 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 					else if (showanalysis)
 					{
 						if (boardlose[i][j]) f = 7;
-						else if (boardbest[i][j]) f = 8;
+						else if (i == boardbestY && j == boardbestX) f = 8;
 						else if (boardpos[i][j] == 1) f = 9;
 						else if (boardpos[i][j] == 2) f = 11;
 					}
@@ -797,7 +797,7 @@ void make_move(int y, int x)
 
 	memset(bestline, 0, sizeof(bestline));
 
-	memset(boardbest, 0, sizeof(boardbest));
+	boardbestX = boardbestY = -1;
 	memset(boardlose, 0, sizeof(boardlose));
 	memset(boardpos, 0, sizeof(boardpos));
 	
@@ -2599,7 +2599,7 @@ void new_game(GtkWidget *widget, gpointer data)
 	memset(board, 0, sizeof(board));
 	memset(forbid, 0, sizeof(forbid));
 	memset(bestline, 0, sizeof(bestline));
-	memset(boardbest, 0, sizeof(boardbest));
+	boardbestX = boardbestY = -1;
 	memset(boardlose, 0, sizeof(boardlose));
 	memset(boardpos, 0, sizeof(boardpos));
 	refresh_board();
@@ -5423,11 +5423,12 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			char *p = string + 16 + 1;
 			if(*p == 'B') //"BEST"
 			{
+				int oldX = boardbestX, oldY = boardbestY;
 				p += 5;
-				sscanf(p, "%d,%d", &y, &x);
-				memset(boardbest, 0, sizeof(boardbest));
-				boardbest[y][x] = 1;
-				refresh_board();
+				sscanf(p, "%d,%d", &boardbestY, &boardbestX);
+				if (oldX >= 0 && oldY >= 0)
+					refresh_board_area(oldX, oldY, oldX + 1, oldY + 1);
+				refresh_board_area(boardbestX, boardbestY, boardbestX + 1, boardbestY + 1);
 			}
 			else if(*p == 'V') //"VAL"
 			{
@@ -5455,13 +5456,20 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			}
 			else if(*p == 'R') //"REFRESH"
 			{
-				memset(boardpos, 0, sizeof(boardpos));
+				for (int y = 0; y < boardsizeh; y++)
+					for (int x = 0; x < boardsizew; x++) {
+						if (boardpos[y][x]) {
+							boardpos[y][x] = 0;
+							refresh_board_area(x, y, x + 1, y + 1);
+						}
+					}
 			}
 			else if(*p == 'D') //"DONE"
 			{
 				p += 5;
 				sscanf(p, "%d,%d", &y, &x);
 				if(boardpos[y][x] == 2) boardpos[y][x] = 1;
+				refresh_board_area(x, y, x + 1, y + 1);
 			}
 			g_free(string);
 			continue;
