@@ -30,8 +30,7 @@ int yixin_strnicmp(const char *string1, const char *string2, size_t count)
 int respawn = 0;
 int showdatabase = 1;
 int usedatabase = 1;
-int zobristflag = 1;
-I64 zobrist[MAX_SIZE][MAX_SIZE][3];
+int databasereadonly = 0;
 int boardsizeh = 15, boardsizew = 15;
 int rboardsizeh = 15, rboardsizew = 15;
 int inforule = 0;
@@ -2731,6 +2730,13 @@ void use_database(GtkWidget *widget, gpointer data)
 	send_command(command);
 	refresh_board();
 }
+void set_database_readonly(GtkWidget *widget, gpointer data)
+{
+	char command[80];
+	databasereadonly ^= 1;
+	sprintf(command, "info database_readonly %d\n", databasereadonly);
+	send_command(command);
+}
 void view_numeration(GtkWidget *widget, gpointer data)
 {
 	shownumber ^= 1;
@@ -4125,6 +4131,8 @@ void execute_command(gchar *command)
 		char command[80];
 		sprintf(command, "info usedatabase %d\n", usedatabase);
 		send_command(command);
+		sprintf(command, "info database_readonly %d\n", databasereadonly);
+		send_command(command);
 		refresh_board();
 	}
 	else
@@ -4200,6 +4208,7 @@ void save_setting()
 		fprintf(out, "%d\t;show forbidden moves\n", showforbidden);
 		fprintf(out, "%d\t;check timeout\n", checktimeout);
 		fprintf(out, "%d\t;use database moves\n", usedatabase);
+		fprintf(out, "%d\t;enable database read only move\n", databasereadonly);
 		fprintf(out, "%d\t;record debug log\n", recorddebuglog);
 		fprintf(out, "%d\t;hdpi scale\n", (int)(hdpiscale * 100 + 1e-10));
 		fprintf(out, "%d\t;symmetric nbest for the 5th moves\n", nbestsym);
@@ -4594,7 +4603,7 @@ void create_windowmain()
 	//GtkWidget *menuitemnewrule[10]; //TODO
 	GtkWidget *menuitemcomputerplaysblack, *menuitemcomputerplayswhite, *menuitemchecktimeout, *menuitemsettings;
 	GtkWidget *menuitemlanguage, *menuitemenglish, *menuitemcustomlng[16] = { 0 }; //At most (16-1) different custom languages
-	GtkWidget *menuitemnumeration, *menuitemlog, *menuitemanalysis, *menuitemclock, *menuitemforbidden, *menuitemdatabase;
+	GtkWidget *menuitemnumeration, *menuitemlog, *menuitemanalysis, *menuitemclock, *menuitemforbidden, *menuitemdatabase, *menuitemdbreadonly;
 	GtkWidget *menuitemabout;
 
 	GtkToolItem *tools[MAX_TOOLBAR_ITEM];
@@ -4878,6 +4887,7 @@ void create_windowmain()
 	menuitemclock = gtk_check_menu_item_new_with_label(language == 0 ? "Clock" : _T(clanguage[94]));
 	menuitemforbidden = gtk_check_menu_item_new_with_label(language == 0 ? "Forbidden Move" : _T(clanguage[97]));
 	menuitemdatabase = gtk_check_menu_item_new_with_label(language == 0 ? "Use Database" : _T(clanguage[103]));
+	menuitemdbreadonly = gtk_check_menu_item_new_with_label(language == 0 ? "Database Readonly" : _T(clanguage[112]));
 	menuitemlanguage = gtk_menu_item_new_with_label(language==0?"Language":_T(clanguage[72]));
 	menuitemquit = gtk_menu_item_new_with_label(language==0?"Quit":_T(clanguage[73]));
 	menuitemabout = gtk_menu_item_new_with_label(language==0?"About":_T(clanguage[74]));
@@ -4978,6 +4988,12 @@ void create_windowmain()
 		use_database(NULL, NULL);
 		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitemdatabase), TRUE);
 	}
+	if (databasereadonly)
+	{
+		databasereadonly = 0; //hack
+		set_database_readonly(NULL, NULL);
+		gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(menuitemdbreadonly), TRUE);
+	}
 	menuitemcomputerplaysblack = gtk_check_menu_item_new_with_label(language==0?"Computer Plays Black":_T(clanguage[81]));
 	menuitemcomputerplayswhite = gtk_check_menu_item_new_with_label(language==0?"Computer Plays White":_T(clanguage[82]));
 	menuitemchecktimeout = gtk_check_menu_item_new_with_label(language == 0 ? "Check Timeout" : _T(clanguage[99])); 
@@ -5023,6 +5039,7 @@ void create_windowmain()
 	gtk_menu_shell_append(GTK_MENU_SHELL(menugame), menuitemrule);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menugame), menuitemsize);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menugame), menuitemdatabase);
+	gtk_menu_shell_append(GTK_MENU_SHELL(menugame), menuitemdbreadonly);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menugame), menuitemquit);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menuview), menuitemnumeration);
 	gtk_menu_shell_append(GTK_MENU_SHELL(menuview), menuitemlog);
@@ -5050,6 +5067,7 @@ void create_windowmain()
 	g_signal_connect(G_OBJECT(menuitemclock), "activate", G_CALLBACK(view_clock), NULL);
 	g_signal_connect(G_OBJECT(menuitemforbidden), "activate", G_CALLBACK(view_forbidden), NULL);
 	g_signal_connect(G_OBJECT(menuitemdatabase), "activate", G_CALLBACK(use_database), NULL);
+	g_signal_connect(G_OBJECT(menuitemdbreadonly), "activate", G_CALLBACK(set_database_readonly), NULL);
 	g_signal_connect(G_OBJECT(menuitemquit), "activate", G_CALLBACK(yixin_quit), NULL);
 	g_signal_connect(G_OBJECT(menuitemabout), "activate", G_CALLBACK(show_dialog_about), GTK_WINDOW(windowmain));
 	g_signal_connect(G_OBJECT(menuitemsettings), "activate", G_CALLBACK(show_dialog_settings), GTK_WINDOW(windowmain));
@@ -5861,6 +5879,8 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		if (checktimeout < 0 || checktimeout > 1) checktimeout = 1;
 		usedatabase = read_int_from_file(in);
 		if (usedatabase < 0 || usedatabase > 1) usedatabase = 1;
+		databasereadonly = read_int_from_file(in);
+		if (databasereadonly < 0 || databasereadonly > 1) databasereadonly = 0;
 		recorddebuglog = read_int_from_file(in);
 		if (recorddebuglog < 0 || recorddebuglog > 1) recorddebuglog = 0;
 		t = read_int_from_file(in);
