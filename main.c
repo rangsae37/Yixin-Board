@@ -474,11 +474,11 @@ GdkPixbuf *draw_overlay_scaled(GdkPixbuf *pb, int w, int h, gchar *text, char *c
 	gtk_widget_realize(scratch);
 	layout = gtk_widget_create_pango_layout(scratch, NULL);
 	gtk_widget_destroy(scratch);
-	sprintf(format, "<span foreground='%s' weight='%s' size='%d'>%%s</span>", color, weight, (int)((showsmallfont ? 9000 : 11000) * scale));
+	sprintf(format, "<span foreground='%s' weight='%s' size='%d'>%%s</span>", color, weight, (int)((showsmallfont ? 10000 : 11000) * scale));
 	markup = g_strdup_printf(format, text);
 	pango_layout_set_markup(layout, markup, -1);
 	g_free(markup);
-	gdk_draw_layout(pm, gc, w / 2 - (int)(strlen(text) * 4 * hdpiscale), h / 2 - (int)((showsmallfont ? 8 : 10) * hdpiscale * scale), layout);
+	gdk_draw_layout(pm, gc, w / 2 - (int)(strlen(text) * 4 * hdpiscale), h / 2 - (int)((showsmallfont ? 9 : 10) * hdpiscale * scale), layout);
 	g_object_unref(layout);
 	ret = gdk_pixbuf_get_from_drawable(NULL, pm, NULL, 0, 0, 0, 0, w, h);
 	g_object_unref(pm);
@@ -588,9 +588,17 @@ rgb hsv2rgb(hsv in)
     return out;     
 }
 
+int losssaturation = 0;
+int winsaturation = 0;
+int minsaturation = 0;
+int maxsaturation = 0;
 const char* winrate2colorstr(int winrate) {
 	static char color_buf[10] = "#";
-	hsv hsv_color = { (100 - winrate) * (180 / 100.0), 0.05 * (winrate > 0) + 0.75 * (winrate / 100.0), 1.0f };
+	hsv hsv_color = { 
+		(100 - winrate) * (180 / 100.0), 
+		(winrate <= 0 ? losssaturation : winrate >= 100 ? winsaturation : minsaturation + (maxsaturation - minsaturation) * (winrate / 100.0)) * 0.01,
+		1.0
+	};
 	rgb rgb_color = hsv2rgb(hsv_color);
 	sprintf(color_buf + 1, "%02X", (int)(rgb_color.r * 255));
 	sprintf(color_buf + 3, "%02X", (int)(rgb_color.g * 255));
@@ -676,7 +684,7 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 						int first = 0; // first character of the tag
 						float scale;
 						if (tag >> 16 == 0)
-							sprintf(n, "%c%c", first = UPPERCASE_TAG(tag / 256), tag % 256), scale = 1.0f;
+							sprintf(n, "%c%c", first = UPPERCASE_TAG(tag / 256), tag % 256), scale = 0.97f;
 						else if (tag >> 24 == 0)
 							sprintf(n, "%c%c%c", first = UPPERCASE_TAG(tag / 65536), tag / 256 % 256, tag % 256), scale = 0.95f;
 						else
@@ -4212,6 +4220,10 @@ void save_setting()
 		fprintf(out, "%d\t;record debug log\n", recorddebuglog);
 		fprintf(out, "%d\t;hdpi scale\n", (int)(hdpiscale * 100 + 1e-10));
 		fprintf(out, "%d\t;symmetric nbest for the 5th moves\n", nbestsym);
+		fprintf(out, "%d\t;lossing move color saturation (0~100)\n", losssaturation);
+		fprintf(out, "%d\t;winning move color saturation (0~100)\n", winsaturation);
+		fprintf(out, "%d\t;min winrate color saturation (0~100)\n", minsaturation);
+		fprintf(out, "%d\t;max winrate color saturation (0~100)\n", maxsaturation);
 		fclose(out);
 	}
 	for (i = 0; i < toolbarnum; i++)
@@ -5887,6 +5899,14 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		if (t > 0 && t<1000) hdpiscale = t / 100.0;
 		t = read_int_from_file(in);
 		if (t >= 0 && t <= 1) nbestsym = t;
+		losssaturation = read_int_from_file(in);
+		if (losssaturation < 0 || losssaturation > 100) losssaturation = 0;
+		winsaturation = read_int_from_file(in);
+		if (winsaturation < 0 || winsaturation > 100) winsaturation = 0;
+		minsaturation = read_int_from_file(in);
+		if (minsaturation < 0 || minsaturation > 100) minsaturation = 0;
+		maxsaturation = read_int_from_file(in);
+		if (maxsaturation < 0 || maxsaturation > 100) maxsaturation = 0;
 		fclose(in);
 	}
 	for (i = 0; i < toolbarnum; i++)
