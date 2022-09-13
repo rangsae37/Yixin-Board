@@ -2121,12 +2121,15 @@ void show_dialog_save(GtkWidget *widget, gpointer data)
 	gtk_widget_destroy (dialog);
 }
 
-void show_dialog_dbset(GtkWidget *widget, gpointer data)
+const char* show_dialog_dbselect(GtkWidget *widget, gpointer data, int isSave)
 {
+	static char _filename[256];
+
 	GtkWidget *dialog;
 	GtkFileFilter* filter;
-	dialog = gtk_file_chooser_dialog_new("Set Database", data, GTK_FILE_CHOOSER_ACTION_OPEN,
-		GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, GTK_STOCK_OPEN, GTK_RESPONSE_ACCEPT, NULL);
+	dialog = gtk_file_chooser_dialog_new("Select database file", data, 
+		(isSave ? GTK_FILE_CHOOSER_ACTION_SAVE : GTK_FILE_CHOOSER_ACTION_OPEN),
+		GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, (isSave ? GTK_STOCK_SAVE : GTK_STOCK_OPEN), GTK_RESPONSE_ACCEPT, NULL);
 	filter = gtk_file_filter_new();
 	gtk_file_filter_set_name(filter, "Yixin database");
 	gtk_file_filter_add_pattern(filter, "*.[Dd][Bb]");
@@ -2135,7 +2138,6 @@ void show_dialog_dbset(GtkWidget *widget, gpointer data)
 	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
 	{
 		char *filenameutf, *filename;
-		char _filename[256];
 		int len;
 		filenameutf = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
 		filename = g_locale_from_utf8(filenameutf, -1, NULL, NULL, NULL);
@@ -2155,13 +2157,15 @@ void show_dialog_dbset(GtkWidget *widget, gpointer data)
 		len = strlen(_filename);
 		_filename[len] = '\n';
 		_filename[len + 1] = 0;
-		send_command("yxsetdatabase\n");
-		send_command(_filename);
 
 		g_free(filenameutf);
 		g_free(filename);
+		gtk_widget_destroy(dialog);
+		return _filename;
+	} else {
+		gtk_widget_destroy(dialog);
+		return NULL;
 	}
-	gtk_widget_destroy(dialog);
 }
 
 void show_dialog_move5N(GtkWidget *widget, gpointer data)
@@ -2233,8 +2237,8 @@ void show_dialog_size(GtkWidget *widget, gpointer data)
 	gtk_table_set_col_spacings(GTK_TABLE(table), 0); /* set the column distance between elements to be 0 */
 	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), table, FALSE, FALSE, 3);
 	
-	label[0] = gtk_label_new(language == 0 ? "Board Height (10 ~ 22):" : _T(clanguage[42]));
-	label[1] = gtk_label_new(language == 0 ? "Board Width (10 ~ 22):" : _T(clanguage[43]));
+	label[0] = gtk_label_new(language == 0 ? "Board Height (5 ~ 22):" : _T(clanguage[42]));
+	label[1] = gtk_label_new(language == 0 ? "Board Width (5 ~ 22):" : _T(clanguage[43]));
 	
 	entry[0] = gtk_entry_new();
 	sprintf(text, "%d", boardsizeh);
@@ -2261,7 +2265,7 @@ void show_dialog_size(GtkWidget *widget, gpointer data)
 				int s1, s2;
 				sscanf(ptext[0], "%d", &s1);
 				sscanf(ptext[1], "%d", &s2);
-				if (s1 <= MAX_SIZE && s1 >= 10 && s2 <= MAX_SIZE && s2 >= 10)
+				if (s1 <= MAX_SIZE && s1 >= 5 && s2 <= MAX_SIZE && s2 >= 5)
 				{
 					rboardsizeh = s1;
 					rboardsizew = s2;
@@ -2954,6 +2958,8 @@ void execute_command(gchar *command)
 		printf_log(" dbdel all\n");
 		printf_log(" dbdel all [wl,nonwl]\n");
 		printf_log(" dbset [filename]\n");
+		printf_log(" dbmerge [filename]\n");
+		printf_log(" dbsplit [filename]\n");
 		printf_log(" hash usage\n");
 		printf_log(" command [on,off]\n");
 		printf_log(" dbeditlabel\n");
@@ -3906,7 +3912,11 @@ void execute_command(gchar *command)
 		sprintf(_command, "%s", command + 5 + 1);
 		if (command[5] == 0 || command[5] == '\n' || command[5] == '\r')
 		{
-			show_dialog_dbset(NULL, windowmain);
+			const char* dbfilename = show_dialog_dbselect(NULL, windowmain, 0);
+			if (dbfilename) {
+				send_command("yxsetdatabase\n");
+				send_command(dbfilename);
+			}
 		}
 		else
 		{
@@ -4005,6 +4015,87 @@ void execute_command(gchar *command)
 			send_command(_command);
 		}
 		send_command("done\n");
+	}
+	else if (yixin_strnicmp(command, "dbmerge", 7) == 0)
+	{
+		gchar _command[80];
+		sprintf(_command, "%s", command + 7 + 1);
+		if (command[7] == 0 || command[7] == '\n' || command[7] == '\r')
+		{
+			const char* dbfilename = show_dialog_dbselect(NULL, windowmain, 0);
+			if (dbfilename) {
+				send_command("yxdbmerge\n");
+				send_command(dbfilename);
+			}
+		}
+		else
+		{
+			i = strlen(_command);
+			while (i > 0)
+			{
+				if (_command[i - 1] == '\n' || _command[i - 1] == '\r')
+				{
+					_command[i - 1] = 0;
+					i--;
+				}
+				else
+					break;
+			}
+			_command[i] = '\n';
+			_command[i + 1] = 0;
+			if (i > 0)
+			{
+				send_command("yxdbmerge\n");
+				send_command(_command);
+			}
+		}
+	}
+	else if (yixin_strnicmp(command, "dbsplit", 7) == 0)
+	{
+		gchar _command[80];
+		sprintf(_command, "start %d %d\n", boardsizew, boardsizeh);
+		send_command(_command);
+		sprintf(_command, "yxboard\n");
+		send_command(_command);
+		for (i = 0; i<piecenum; i++)
+		{
+			sprintf(_command, "%d,%d,%d\n", movepath[i] / boardsizew,
+				movepath[i] % boardsizew, piecenum % 2 == i % 2 ? 1 : 2);
+			send_command(_command);
+		}
+		sprintf(_command, "done\n");
+		send_command(_command);
+
+		sprintf(_command, "%s", command + 7 + 1);
+		if (command[7] == 0 || command[7] == '\n' || command[7] == '\r')
+		{
+			const char* dbfilename = show_dialog_dbselect(NULL, windowmain, 1);
+			if (dbfilename) {
+				send_command("yxdbsplit\n");
+				send_command(dbfilename);
+			}
+		}
+		else
+		{
+			i = strlen(_command);
+			while (i > 0)
+			{
+				if (_command[i - 1] == '\n' || _command[i - 1] == '\r')
+				{
+					_command[i - 1] = 0;
+					i--;
+				}
+				else
+					break;
+			}
+			_command[i] = '\n';
+			_command[i + 1] = 0;
+			if (i > 0)
+			{
+				send_command("yxdbsplit\n");
+				send_command(_command);
+			}
+		}
 	}
 	else if (yixin_strnicmp(command, "makebook", 8) == 0)
 	{
