@@ -4121,6 +4121,12 @@ void execute_command(gchar *command)
 		sprintf(_command, "done\n");
 		send_command(_command);
 	}
+	else if (yixin_strnicmp(command, "dbrefresh", 9) == 0) {
+		char command[80];
+		sprintf(command, "info usedatabase %d\n", usedatabase);
+		send_command(command);
+		refresh_board();
+	}
 	else
 	{
 		if (language)
