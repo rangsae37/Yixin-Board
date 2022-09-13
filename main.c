@@ -589,6 +589,16 @@ rgb hsv2rgb(hsv in)
     return out;     
 }
 
+const char* winrate2colorstr(int winrate) {
+	static char color_buf[10] = "#";
+	hsv hsv_color = { (100 - winrate) * (180 / 100.0), 0.05 * (winrate > 0) + 0.75 * (winrate / 100.0), 1.0f };
+	rgb rgb_color = hsv2rgb(hsv_color);
+	sprintf(color_buf + 1, "%02X", (int)(rgb_color.r * 255));
+	sprintf(color_buf + 3, "%02X", (int)(rgb_color.g * 255));
+	sprintf(color_buf + 5, "%02X", (int)(rgb_color.b * 255));
+	return color_buf;
+}
+
 int refreshboardflag = 0; //it is set to 1 when making the 5th move under soosorv rule, otherwise, 0
 int refreshboardflag2 = 0; //it is set to 1 when refreshboardflag has been set to 1
 void refresh_board_area(int x0, int y0, int x1, int y1)
@@ -644,16 +654,20 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 
 					const char* color = piecenum % 2 ? "#FFFFFF" : "#000000";
 					const char* weight = "normal";
+
 					#define UPPERCASE_TAG(tag) ((tag) == 'w' ? 'W' : ((tag) == 'l' ? 'L' : ((tag) == 'd' ? 'D' : (tag))))
 					int tag = boardtag[i][j];
 					if (tag < 128)
 					{
+						tag = UPPERCASE_TAG(tag);
 						if (pixbufboardchar[y][x][tag][piecenum % 2] == NULL)
 						{
-							if (tag == 'w')
-								weight = "bold";
+							if (tag == 'W')
+								color = winrate2colorstr(100), weight = "bold";
+							else if (tag == 'L')
+								color = winrate2colorstr(0);
 
-							sprintf(n, "%c", UPPERCASE_TAG(tag));
+							sprintf(n, "%c", tag);
 							pixbufboardchar[y][x][tag][piecenum % 2] = draw_overlay_scaled(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, color, weight, 1.0f);
 						}
 						gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardchar[y][x][tag][piecenum % 2]);
@@ -661,17 +675,19 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 					else
 					{
 						int first = 0; // first character of the tag
-						float scale = 0.9f;
+						float scale;
 						if (tag >> 16 == 0)
-							sprintf(n, "%c%c", first = UPPERCASE_TAG(tag / 256), tag % 256);
+							sprintf(n, "%c%c", first = UPPERCASE_TAG(tag / 256), tag % 256), scale = 1.0f;
 						else if (tag >> 24 == 0)
-							sprintf(n, "%c%c%c", first = UPPERCASE_TAG(tag / 65536), tag / 256 % 256, tag % 256);
+							sprintf(n, "%c%c%c", first = UPPERCASE_TAG(tag / 65536), tag / 256 % 256, tag % 256), scale = 0.95f;
 						else
-							sprintf(n, "%c%c%c%c", first = UPPERCASE_TAG(tag / 16777216), tag / 65536 % 256, tag / 256 % 256, tag % 256), scale = 0.8f;
+							sprintf(n, "%c%c%c%c", first = UPPERCASE_TAG(tag / 16777216), tag / 65536 % 256, tag / 256 % 256, tag % 256), scale = 0.9f;
 
 						if (first == 'W' || first == 'L') {
 							if (first == 'W')
-								color = "#EF3737", weight = "bold", scale *= 0.95f;
+								color = winrate2colorstr(100), weight = "bold", scale *= 0.98f;
+							else
+								color = winrate2colorstr(0), scale *= 0.95f;
 
 							int step = atoi(n+1);
 							if (step >= 0 && step < 100) {
@@ -684,20 +700,14 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 								continue;
 							}
 						} else if (tag % 256 == '%') {
-							weight = "bold", scale *= 0.966f;
+							weight = "bold", scale *= 0.98f;
 							int winrate = atoi(n);
 							if (winrate >= 0 && winrate < 100) {
 								// use cached Winrate pixbuf
 								int idx = winrate + 100 * 2 + 128;
 								if (pixbufboardchar[y][x][idx][piecenum % 2] == NULL) {
-									const char color_buf[10] = "#";
-									hsv hsv_color = { (99 - winrate) * (190 / 100.0), 1.0, 1.0 };
-									rgb rgb_color = hsv2rgb(hsv_color);
-									sprintf(color_buf + 1, "%02X", (int)(rgb_color.r * 255));
-									sprintf(color_buf + 3, "%02X", (int)(rgb_color.g * 255));
-									sprintf(color_buf + 5, "%02X", (int)(rgb_color.b * 255));
-
-									pixbufboardchar[y][x][idx][piecenum % 2] = draw_overlay_scaled(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, color_buf, weight, scale);
+									color = winrate2colorstr(max(winrate, 1)); // use winrate=1 at least
+									pixbufboardchar[y][x][idx][piecenum % 2] = draw_overlay_scaled(pixbufboard[y][x], gdk_pixbuf_get_width(pixbufboard[y][x]), gdk_pixbuf_get_height(pixbufboard[y][x]), n, color, weight, scale);
 								}
 								gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), pixbufboardchar[y][x][idx][piecenum % 2]);
 								continue;
@@ -4746,7 +4756,7 @@ void create_windowmain()
 	g_object_unref(pixbuf);
 	pixbuf = NULL;
 
-	showsmallfont = (size < 30);
+	showsmallfont = (size < 38);
 
 	menubar = gtk_menu_bar_new();
 	menugame = gtk_menu_new();
