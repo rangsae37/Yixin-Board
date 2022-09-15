@@ -3930,6 +3930,7 @@ void execute_command(gchar *command)
 			if (dbfilename) {
 				send_command("yxsetdatabase\n");
 				send_command(dbfilename);
+				show_database();
 			}
 		}
 		else
@@ -3951,6 +3952,7 @@ void execute_command(gchar *command)
 			{
 				send_command("yxsetdatabase\n");
 				send_command(_command);
+				show_database();
 			}
 		}
 	}
@@ -4040,6 +4042,7 @@ void execute_command(gchar *command)
 			if (dbfilename) {
 				send_command("yxdbmerge\n");
 				send_command(dbfilename);
+				show_database();
 			}
 		}
 		else
@@ -4061,6 +4064,7 @@ void execute_command(gchar *command)
 			{
 				send_command("yxdbmerge\n");
 				send_command(_command);
+				show_database();
 			}
 		}
 	}
@@ -5527,22 +5531,8 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 					printf_log("tag=(null)  ");
 				else
 					printf_log("tag=%c  ", tag);
-				printf_log("val=%d  depth=%d  ", val, depth);
-				switch(bound)
-				{
-					default:
-						printf_log("bound=none\n");
-						break;
-					case 1:
-						printf_log("bound=upper\n");
-						break;
-					case 2:
-						printf_log("bound=lower\n");
-						break;
-					case 3:
-						printf_log("bound=exact\n");
-						break;
-				}
+				const char* boundtext = bound == 3 ? "exact" : bound == 2 ? "lower" : bound == 1 ? "upper" : "none";
+				printf_log("val=%d  depth=%d  bound=%s\n", val, depth, boundtext);
 			}
 			else
 			{
@@ -5671,7 +5661,10 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			refresh_board();
 			continue;
 		}
+		y = x = -999;
 		sscanf(string, "%d,%d", &y, &x);
+		if (y == -999 && x == -999)
+			continue;
 		if(isneedomit > 0)
 		{
 			g_free(string);
@@ -5684,7 +5677,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			clock_timer_change_status(2);
 
 			printf_log("\n");
-			if(blockautoreset)
+			if (blockautoreset)
 			{
 				send_command("yxblockreset\n");
 				memset(boardblock, 0, sizeof(boardblock));
@@ -6074,6 +6067,12 @@ void load_engine()
     iochannelout = g_io_channel_unix_new(out);
     iochannelerr = g_io_channel_unix_new(err);
 #endif
+
+	// use binary encoding for pipes
+	g_io_channel_set_encoding(iochannelin, NULL, &error);
+	g_io_channel_set_encoding(iochannelout, NULL, &error);
+	g_io_channel_set_encoding(iochannelerr, NULL, &error);
+
 	g_child_watch_add(pid, (GChildWatchFunc)childexit_watch, NULL);
 	g_io_add_watch(iochannelout, G_IO_IN | G_IO_PRI | G_IO_HUP, (GIOFunc)iochannelout_watch, NULL);
 	//g_io_add_watch_full(iochannelout, G_PRIORITY_HIGH, G_IO_IN | G_IO_HUP, (GIOFunc)iochannelout_watch, NULL, NULL);
