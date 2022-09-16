@@ -2174,6 +2174,54 @@ const char* show_dialog_dbselect(GtkWidget *widget, gpointer data, int isSave)
 		return NULL;
 	}
 }
+const char* show_dialog_libselect(GtkWidget *widget, gpointer data, int isSave)
+{
+	static char _filename[256];
+
+	GtkWidget *dialog;
+	GtkFileFilter* filter;
+	dialog = gtk_file_chooser_dialog_new("Select library file", data, 
+		(isSave ? GTK_FILE_CHOOSER_ACTION_SAVE : GTK_FILE_CHOOSER_ACTION_OPEN),
+		GTK_STOCK_CANCEL, GTK_RESPONSE_CANCEL, (isSave ? GTK_STOCK_SAVE : GTK_STOCK_OPEN), GTK_RESPONSE_ACCEPT, NULL);
+	filter = gtk_file_filter_new();
+	gtk_file_filter_set_name(filter, "Library file");
+	gtk_file_filter_add_pattern(filter, "*.[Ll][Ii][Bb]");
+	gtk_file_chooser_add_filter(GTK_FILE_CHOOSER(dialog), filter);
+	gtk_window_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
+	if (gtk_dialog_run(GTK_DIALOG(dialog)) == GTK_RESPONSE_ACCEPT)
+	{
+		char *filenameutf, *filename;
+		int len;
+		filenameutf = gtk_file_chooser_get_filename(GTK_FILE_CHOOSER(dialog));
+		filename = g_locale_from_utf8(filenameutf, -1, NULL, NULL, NULL);
+		len = strlen(filename);
+		if (len >= 3 && 
+			(filename[len - 1] == 'B' || filename[len - 1] == 'b') &&
+			(filename[len - 2] == 'I' || filename[len - 2] == 'i') && 
+			(filename[len - 3] == 'L' || filename[len - 3] == 'l') && 
+			(filename[len - 4] == '.'))
+		{
+			sprintf(_filename, "%s", filename);
+		}
+		else
+		{
+			sprintf(_filename, "%s.lib", filename);
+		}
+		printf_log("%s\n", _filename);
+		
+		len = strlen(_filename);
+		_filename[len] = '\n';
+		_filename[len + 1] = 0;
+
+		g_free(filenameutf);
+		g_free(filename);
+		gtk_widget_destroy(dialog);
+		return _filename;
+	} else {
+		gtk_widget_destroy(dialog);
+		return NULL;
+	}
+}
 
 void show_dialog_move5N(GtkWidget *widget, gpointer data)
 {
@@ -2983,6 +3031,7 @@ void execute_command(gchar *command)
 		printf_log(" dbsetbestmove\n");
 		printf_log(" dbclearbestmove\n");
 		printf_log(" dbtotxt [filename]\n");
+		printf_log(" libtodb [filename]\n");
 		printf_log(" forbid\n");
 		printf_log(" forbid undo\n");
 		//printf_log(" sleep [second]\n");
@@ -3920,13 +3969,50 @@ void execute_command(gchar *command)
 			send_command(_command);
 		}
 	}
+	else if (yixin_strnicmp(command, "libtodb", 7) == 0)
+	{
+		gchar _command[80];
+		sprintf(_command, "%s", command + 7 + 1);
+
+		if (command[7] == 0 || command[7] == '\n' || command[7] == '\r')
+		{
+			const char* libfilename = show_dialog_libselect(NULL, windowmain, 0);
+			if (libfilename) {
+				send_command("yxlibtodb\n");
+				send_command(libfilename);
+				show_database();
+			}
+		}
+		else
+		{
+			i = strlen(_command);
+			while (i > 0)
+			{
+				if (_command[i - 1] == '\n' || _command[i - 1] == '\r')
+				{
+					_command[i - 1] = 0;
+					i--;
+				}
+				else
+					break;
+			}
+			_command[i] = '\n';
+			_command[i + 1] = 0;
+			if (i > 0)
+			{
+				send_command("yxlibtodb\n");
+				send_command(_command);
+				show_database();
+			}
+		}
+	}
 	else if (yixin_strnicmp(command, "dbset", 5) == 0)
 	{
 		gchar _command[80];
 		sprintf(_command, "%s", command + 5 + 1);
-		if (command[5] == 0 || command[5] == '\n' || command[5] == '\r')
+		if (command[5] == 0 || command[5] == '\n' || command[5] == '\r' || command[5] == 'o')
 		{
-			const char* dbfilename = show_dialog_dbselect(NULL, windowmain, 0);
+			const char* dbfilename = show_dialog_dbselect(NULL, windowmain, command[5] == 'o' ? 0 : 1);
 			if (dbfilename) {
 				send_command("yxsetdatabase\n");
 				send_command(dbfilename);
