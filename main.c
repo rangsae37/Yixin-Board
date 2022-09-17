@@ -696,7 +696,8 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 							else
 								color = winrate2colorstr(0), scale *= 0.95f;
 
-							int step = atoi(n+1);
+							int step = n[1] == '*' && n[2] == 0 ? 0 : atoi(n+1);
+							if (step == 0) n[1] = '*', n[2] = 0;
 							if (step >= 0 && step < 100) {
 								// use cached Win/Lose pixbuf
 								int idx = step + 100 * (first == 'L') + 128;
