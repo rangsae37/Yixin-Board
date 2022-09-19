@@ -592,12 +592,13 @@ int losssaturation = 0;
 int winsaturation = 0;
 int minsaturation = 0;
 int maxsaturation = 0;
+int colorvalue = 100;
 const char* winrate2colorstr(int winrate) {
 	static char color_buf[10] = "#";
 	hsv hsv_color = { 
 		(100 - winrate) * (180 / 100.0), 
 		(winrate <= 0 ? losssaturation : winrate >= 100 ? winsaturation : minsaturation + (maxsaturation - minsaturation) * (winrate / 100.0)) * 0.01,
-		1.0
+		colorvalue * 0.01
 	};
 	rgb rgb_color = hsv2rgb(hsv_color);
 	sprintf(color_buf + 1, "%02X", (int)(rgb_color.r * 255));
@@ -4315,6 +4316,7 @@ void save_setting()
 		fprintf(out, "%d\t;winning move color saturation (0~100)\n", winsaturation);
 		fprintf(out, "%d\t;min winrate color saturation (0~100)\n", minsaturation);
 		fprintf(out, "%d\t;max winrate color saturation (0~100)\n", maxsaturation);
+		fprintf(out, "%d\t;value of color (0~100)\n", colorvalue);
 		fclose(out);
 	}
 	for (i = 0; i < toolbarnum; i++)
@@ -5987,6 +5989,8 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		if (minsaturation < 0 || minsaturation > 100) minsaturation = 0;
 		maxsaturation = read_int_from_file(in);
 		if (maxsaturation < 0 || maxsaturation > 100) maxsaturation = 0;
+		colorvalue = read_int_from_file(in);
+		if (colorvalue < 0 || colorvalue > 100) colorvalue = 100;
 		fclose(in);
 	}
 	for (i = 0; i < toolbarnum; i++)
