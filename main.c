@@ -13,7 +13,7 @@ typedef long long I64;
 #define CAUTION_NUM 5  //0..CAUTION_NUM
 #define MIN_SPLIT_DEPTH 5
 #define MAX_SPLIT_DEPTH 20
-#define MAX_TOOLBAR_ITEM 32
+#define MAX_TOOLBAR_ITEM 64
 #define MAX_TOOLBAR_COMMAND_LEN 2048
 #define MAX_HOTKEY_ITEM 32
 #define MAX_HOTKEY_COMMAND_LEN 2048
@@ -3020,7 +3020,8 @@ void execute_command(gchar *command)
 		printf_log(" dbval\n");
 		printf_log(" dbdel one\n");
 		printf_log(" dbdel all\n");
-		printf_log(" dbdel all [wl,nonwl]\n");
+		printf_log(" dbdel all [wl,nonwl,wlnostep] (recursive)\n");
+		printf_log(" dbdel all wlinstep [numberofstep] (recursive)\n");
 		printf_log(" dbset [filename]\n");
 		printf_log(" dbmerge [filename]\n");
 		printf_log(" dbsplit [filename]\n");
@@ -4087,7 +4088,41 @@ void execute_command(gchar *command)
 	else if (yixin_strnicmp(command, "dbdel all nonwl", 15) == 0)
 	{
 		gchar _command[80];
-		send_command("yxdeletedatabaseall nonwl\n");
+		send_command(yixin_strnicmp(command, "dbdel all nonwl recursive", 25) == 0 ? 
+					"yxdeletedatabaseall nonwlrecursive\n" : 
+					"yxdeletedatabaseall nonwl\n");
+		for (i = 0; i < piecenum; i++)
+		{
+			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
+				movepath[i] % boardsizew);
+			send_command(_command);
+		}
+		send_command("done\n");
+	}
+	else if (yixin_strnicmp(command, "dbdel all wlnostep", 18) == 0)
+	{
+		gchar _command[80];
+		send_command(yixin_strnicmp(command, "dbdel all wlnostep recursive", 28) == 0 ? 
+					"yxdeletedatabaseall wlnosteprecursive\n" : 
+					"yxdeletedatabaseall wlnostep\n");
+		for (i = 0; i < piecenum; i++)
+		{
+			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
+				movepath[i] % boardsizew);
+			send_command(_command);
+		}
+		send_command("done\n");
+	}
+	else if (yixin_strnicmp(command, "dbdel all wlinstep", 18) == 0)
+	{
+		gchar _command[80];
+		int recursive = yixin_strnicmp(command, "dbdel all wlinstep recursive", 28) == 0;
+		int matestep = 1;
+		sscanf(command + (recursive ? 29 : 19), "%d", &matestep);
+		sprintf(_command, 
+				(recursive ? "yxdeletedatabaseall wlinsteprecursive %d\n" : "yxdeletedatabaseall wlinstep %d\n"),
+				matestep);
+		send_command(_command);
 		for (i = 0; i < piecenum; i++)
 		{
 			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
@@ -4099,7 +4134,9 @@ void execute_command(gchar *command)
 	else if (yixin_strnicmp(command, "dbdel all wl", 12) == 0)
 	{
 		gchar _command[80];
-		send_command("yxdeletedatabaseall wl\n");
+		send_command(yixin_strnicmp(command, "dbdel all wl recursive", 22) == 0 ? 
+					"yxdeletedatabaseall wlrecursive\n" : 
+					"yxdeletedatabaseall wl\n");
 		for (i = 0; i < piecenum; i++)
 		{
 			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
@@ -4287,7 +4324,7 @@ void save_setting()
 		fprintf(out, "%d\t;max depth\n", maxdepth);
 		fprintf(out, "%d\t;max node\n", maxnode);
 		fprintf(out, "%d\t;style (rash 0 ~ %d cautious)\n", cautionfactor, CAUTION_NUM);
-		fprintf(out, "%d\t;toolbar style (0: only icon, 1: both icon and words)\n", showtoolbarboth);
+		fprintf(out, "%d\t;toolbar style (0: only icon, 1: both icon and words, 2: both with horizontally stacked)\n", showtoolbarboth);
 		fprintf(out, "%d\t;show log (0: no, 1: yes)\n", showlog);
 		fprintf(out, "%d\t;show number (0: no, 1: yes)\n", shownumber);
 		fprintf(out, "%d\t;show analysis (0: no, 1: yes)\n", showanalysis);
@@ -5194,11 +5231,13 @@ void create_windowmain()
 	}
 
 	toolbar = gtk_toolbar_new();
-	if(!showtoolbarboth)
+	if (showtoolbarboth == 0)
 		gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_ICONS);
-	else
+	else if (showtoolbarboth == 1)
 		gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_BOTH);
-	if(toolbarpos)
+	else
+		gtk_toolbar_set_style(GTK_TOOLBAR(toolbar), GTK_TOOLBAR_BOTH_HORIZ);
+	if (toolbarpos)
 		gtk_toolbar_set_orientation((GtkToolbar*)toolbar, GTK_ORIENTATION_HORIZONTAL);
 	else
 		gtk_toolbar_set_orientation((GtkToolbar*)toolbar, GTK_ORIENTATION_VERTICAL);
@@ -5931,8 +5970,8 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		cautionfactor = read_int_from_file(in);
 		if(cautionfactor < 0 || cautionfactor > CAUTION_NUM) cautionfactor = 1;
 		showtoolbarboth = read_int_from_file(in);
-		if(def_toolbar >= 0 && def_toolbar <= 1) showtoolbarboth = def_toolbar;
-		if(showtoolbarboth < 0 || showtoolbarboth > 1) showtoolbarboth = 1;
+		if(def_toolbar >= 0 && def_toolbar <= 2) showtoolbarboth = def_toolbar;
+		if(showtoolbarboth < 0 || showtoolbarboth > 2) showtoolbarboth = 1;
 		showlog = read_int_from_file(in);
 		if(showlog < 0 || showlog > 1) showlog = 1;
 		shownumber = read_int_from_file(in);
