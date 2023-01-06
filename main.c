@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS /* for vs */
+﻿#define _CRT_SECURE_NO_WARNINGS /* for vs */
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -3020,7 +3020,7 @@ void execute_command(gchar *command)
 		printf_log(" dbval\n");
 		printf_log(" dbdel one\n");
 		printf_log(" dbdel all\n");
-		printf_log(" dbdel all [wl,nonwl,wlnostep] (recursive)\n");
+		printf_log(" dbdel all [w,l,wl,nonwl,wlnostep] (recursive)\n");
 		printf_log(" dbdel all wlinstep [numberofstep] (recursive)\n");
 		printf_log(" dbset [filename]\n");
 		printf_log(" dbmerge [filename]\n");
@@ -4137,6 +4137,34 @@ void execute_command(gchar *command)
 		send_command(yixin_strnicmp(command, "dbdel all wl recursive", 22) == 0 ? 
 					"yxdeletedatabaseall wlrecursive\n" : 
 					"yxdeletedatabaseall wl\n");
+		for (i = 0; i < piecenum; i++)
+		{
+			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
+				movepath[i] % boardsizew);
+			send_command(_command);
+		}
+		send_command("done\n");
+	}
+	else if (yixin_strnicmp(command, "dbdel all w", 11) == 0)
+	{
+		gchar _command[80];
+		send_command(yixin_strnicmp(command, "dbdel all w recursive", 21) == 0 ? 
+					"yxdeletedatabaseall wrecursive\n" : 
+					"yxdeletedatabaseall w\n");
+		for (i = 0; i < piecenum; i++)
+		{
+			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
+				movepath[i] % boardsizew);
+			send_command(_command);
+		}
+		send_command("done\n");
+	}
+	else if (yixin_strnicmp(command, "dbdel all l", 11) == 0)
+	{
+		gchar _command[80];
+		send_command(yixin_strnicmp(command, "dbdel all l recursive", 21) == 0 ? 
+					"yxdeletedatabaseall lrecursive\n" : 
+					"yxdeletedatabaseall l\n");
 		for (i = 0; i < piecenum; i++)
 		{
 			sprintf(_command, "%d,%d\n", movepath[i] / boardsizew,
