@@ -4355,12 +4355,16 @@ gboolean key_command(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	GtkTextIter start, end;
 	gchar *command;
 
-	if (event->keyval == GDK_Return)
+	if (event->keyval == GDK_Return && !(event->state & GDK_CONTROL_MASK))
 	{
 		gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffertextcommand), &start, &end);
 		command = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffertextcommand), &start, &end, FALSE);
 		
-		execute_command(command);
+		char *cmd = strtok(command, "\n");
+		while (cmd) {
+			execute_command(cmd);
+			cmd = strtok(NULL, "\n");
+		}
 
 		gtk_text_buffer_delete(buffertextcommand, &start, &end);
 		g_free(command);
@@ -5299,6 +5303,7 @@ void create_windowmain()
 	textlog = gtk_text_view_new();
 	PangoFontDescription *fontDesc = pango_font_description_from_string(fontname);
     gtk_widget_modify_font(textlog, fontDesc);
+	gtk_text_view_set_editable(textlog, 0);
 
 	buffertextlog = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textlog));
 	scrolledtextlog = gtk_scrolled_window_new(NULL, NULL);
