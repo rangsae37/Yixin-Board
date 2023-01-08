@@ -15,7 +15,7 @@ typedef long long I64;
 #define MAX_SPLIT_DEPTH 20
 #define MAX_TOOLBAR_ITEM 64
 #define MAX_TOOLBAR_COMMAND_LEN 2048
-#define MAX_HOTKEY_ITEM 32
+#define MAX_HOTKEY_ITEM 64
 #define MAX_HOTKEY_COMMAND_LEN 2048
 
 int yixin_strnicmp(const char *string1, const char *string2, size_t count)
@@ -163,8 +163,8 @@ int hotkeykey[MAX_HOTKEY_ITEM] =
 	14,
 	15,
 	16,
-	27,
-	11
+	53,
+	1
 };
 
 char hotkeycommand[MAX_HOTKEY_ITEM][MAX_HOTKEY_COMMAND_LEN] =
@@ -174,18 +174,21 @@ char hotkeycommand[MAX_HOTKEY_ITEM][MAX_HOTKEY_COMMAND_LEN] =
 	"undo one\n",
 	"redo one\n",
 	"thinking stop\n",
-	"thinking start\n"
+	"thinking toggle\n"
 };
 
-char *hotkeynamelis[] = {
+char *hotkeynamelist[] = {
 	"",
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
 	"Ctrl + Up", "Ctrl + Down", "Ctrl + Left", "Ctrl + Right",
 	"Ctrl + 1", "Ctrl + 2", "Ctrl + 3", "Ctrl + 4", "Ctrl + 5", "Ctrl + 6", "Ctrl + 7", "Ctrl + 8", "Ctrl + 9", "Ctrl + 0",
+	"Ctrl + A", "Ctrl + B", "Ctrl + C", "Ctrl + D", "Ctrl + E", "Ctrl + F", "Ctrl + G", "Ctrl + H", "Ctrl + I", "Ctrl + J", 
+	"Ctrl + K", "Ctrl + L", "Ctrl + M", "Ctrl + N", "Ctrl + O", "Ctrl + P", "Ctrl + Q", "Ctrl + R", "Ctrl + S", "Ctrl + T", 
+	"Ctrl + U", "Ctrl + V", "Ctrl + W", "Ctrl + X", "Ctrl + Y", "Ctrl + Z",
 	"Escape", NULL
 };
 
-int hotkeykeylis[][2] =
+int hotkeykeylist[][2] =
 {
 	{ 0, 0 }, //0
 	{ 0, GDK_F1 }, //1
@@ -217,7 +220,34 @@ int hotkeykeylis[][2] =
 	{ GDK_CONTROL_MASK, GDK_9 }, //25
 	{ GDK_CONTROL_MASK, GDK_0 }, //26
 
-	{ 0, GDK_Escape } //27
+	{ GDK_CONTROL_MASK, GDK_A }, //27
+	{ GDK_CONTROL_MASK, GDK_B }, //28
+	{ GDK_CONTROL_MASK, GDK_C }, //29
+	{ GDK_CONTROL_MASK, GDK_D }, //30
+	{ GDK_CONTROL_MASK, GDK_E }, //31
+	{ GDK_CONTROL_MASK, GDK_F }, //32
+	{ GDK_CONTROL_MASK, GDK_G }, //33
+	{ GDK_CONTROL_MASK, GDK_H }, //34
+	{ GDK_CONTROL_MASK, GDK_I }, //35
+	{ GDK_CONTROL_MASK, GDK_J }, //36
+	{ GDK_CONTROL_MASK, GDK_K }, //37
+	{ GDK_CONTROL_MASK, GDK_L }, //38
+	{ GDK_CONTROL_MASK, GDK_M }, //39
+	{ GDK_CONTROL_MASK, GDK_N }, //40
+	{ GDK_CONTROL_MASK, GDK_O }, //41
+	{ GDK_CONTROL_MASK, GDK_P }, //42
+	{ GDK_CONTROL_MASK, GDK_Q }, //43
+	{ GDK_CONTROL_MASK, GDK_R }, //44
+	{ GDK_CONTROL_MASK, GDK_S }, //45
+	{ GDK_CONTROL_MASK, GDK_T }, //46
+	{ GDK_CONTROL_MASK, GDK_U }, //47
+	{ GDK_CONTROL_MASK, GDK_V }, //48
+	{ GDK_CONTROL_MASK, GDK_W }, //49
+	{ GDK_CONTROL_MASK, GDK_X }, //50
+	{ GDK_CONTROL_MASK, GDK_Y }, //51
+	{ GDK_CONTROL_MASK, GDK_Z }, //52
+
+	{ 0, GDK_Escape } //53
 };
 
 char * _T(char *s)
@@ -2274,7 +2304,6 @@ void show_dialog_move5N(GtkWidget *widget, gpointer data)
 	}
 }
 
-
 void show_dialog_size(GtkWidget *widget, gpointer data)
 {
 	gchar text[80];
@@ -2574,9 +2603,9 @@ void show_dialog_custom_hotkey(GtkWidget *widget, gpointer data)
 	gtk_window_set_resizable(GTK_WINDOW(dialog), FALSE);
 
 	combo = gtk_combo_box_new_text();
-	for (i = 0; hotkeynamelis[i] != NULL; i++)
+	for (i = 0; hotkeynamelist[i] != NULL; i++)
 	{
-		gtk_combo_box_append_text(GTK_COMBO_BOX(combo), hotkeynamelis[i]);
+		gtk_combo_box_append_text(GTK_COMBO_BOX(combo), hotkeynamelist[i]);
 	}
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combo), hotkeykey[(int)data]);
 
@@ -2750,7 +2779,6 @@ void change_timeoutcheck(GtkWidget *widget, gpointer data)
 {
 	checktimeout ^= 1;
 }
-
 void change_side(GtkWidget *widget, gpointer data)
 {
 	computerside ^= (int)data;
@@ -3010,6 +3038,7 @@ void execute_command(gchar *command)
 		printf_log(" key list\n");
 		printf_log(" thinking start\n");
 		printf_log(" thinking stop\n");
+		printf_log(" thinking toggle\n");
 		printf_log(" draw\n");
 		printf_log(" resign\n");
 		printf_log(" undo one\n");
@@ -3652,7 +3681,7 @@ void execute_command(gchar *command)
 	{
 		for (i = 0; i < hotkeynum; i++)
 		{
-			printf_log("%d. %s\n", i + 1, hotkeynamelis[hotkeykey[i]]);
+			printf_log("%d. %s\n", i + 1, hotkeynamelist[hotkeykey[i]]);
 		}
 		printf_log("\n");
 	}
@@ -3716,6 +3745,13 @@ void execute_command(gchar *command)
 	else if (yixin_strnicmp(command, "thinking stop", 13) == 0)
 	{
 		stop_thinking(windowmain, NULL);
+	}
+	else if (yixin_strnicmp(command, "thinking toggle", 13) == 0)
+	{
+		if (isthinking)
+			stop_thinking(windowmain, NULL);
+		else
+			start_thinking(windowmain, NULL);
 	}
 	else if (yixin_strnicmp(command, "undo all", 8) == 0)
 	{
@@ -4319,7 +4355,7 @@ gboolean key_command(GtkWidget *widget, GdkEventKey *event, gpointer data)
 	GtkTextIter start, end;
 	gchar *command;
 
-	if(event->keyval == 0xff0d) // warning: 0xff0d == GDK_KEY_Return
+	if (event->keyval == GDK_Return)
 	{
 		gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffertextcommand), &start, &end);
 		command = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffertextcommand), &start, &end, FALSE);
@@ -4685,33 +4721,15 @@ GdkPixbuf * copy_subpixbuf(GdkPixbuf *_src, int src_x, int src_y, int width, int
 
 gboolean key_press(GtkWidget *widget, GdkEventKey  *event, gpointer data)
 {
-	int i;
-	if (event->state & GDK_CONTROL_MASK)
+	int hasmask = (event->state & GDK_CONTROL_MASK) != 0;
+
+	for (int i = 0; i < hotkeynum; i++)
 	{
-		for (i = 0; i < hotkeynum; i++)
+		int keymask = (hotkeykeylist[hotkeykey[i]][0] & GDK_CONTROL_MASK) != 0;
+		if (!(hasmask ^ keymask) && event->keyval == hotkeykeylist[hotkeykey[i]][1])
 		{
-			if (hotkeykeylis[hotkeykey[i]][0] & GDK_CONTROL_MASK)
-			{
-				if (event->keyval == hotkeykeylis[hotkeykey[i]][1])
-				{
-					hotkey_function(widget, (gpointer)i);
-					return TRUE;
-				}
-			}
-		}
-	}
-	else
-	{
-		for (i = 0; i < hotkeynum; i++)
-		{
-			if (!(hotkeykeylis[hotkeykey[i]][0] & GDK_CONTROL_MASK))
-			{
-				if (event->keyval == hotkeykeylis[hotkeykey[i]][1])
-				{
-					hotkey_function(widget, (gpointer)i);
-					return TRUE;
-				}
-			}
+			hotkey_function(widget, (gpointer)i);
+			return TRUE;
 		}
 	}
 
