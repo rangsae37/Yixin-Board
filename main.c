@@ -4682,13 +4682,27 @@ void textpos_changed(GtkWidget *widget, gpointer data)
 	
 	GtkTextIter start, end;
 	gchar *posstr, *command;
-
 	gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffertextpos), &start, &end);
 	posstr = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffertextpos), &start, &end, FALSE);
-	command = g_strdup_printf("putpos %s", posstr);
-	execute_command(command);
+
+	int valid = 1;
+	for (int i = 0; posstr[i]; )
+	{
+		if (!((posstr[i] >= 'a' && posstr[i] <= 'z') || (posstr[i] >= 'A' && posstr[i] <= 'Z'))) 
+		{ valid = 0; break; }
+		i++;
+		if (posstr[i] < '0' || posstr[i] > '9') { valid = 0; break; }
+		i++;
+		if (posstr[i] >= '0' && posstr[i] <= '9') i++;
+	}
+
+	if (valid)
+	{
+		command = g_strdup_printf("putpos %s", posstr);
+		execute_command(command);
+		g_free(command);
+	}
 	g_free(posstr);
-	g_free(command);
 }
 
 void textpos_button_clicked(GtkWidget *button, gpointer data) {
