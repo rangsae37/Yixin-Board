@@ -4751,8 +4751,8 @@ void save_setting()
 		fprintf(out, "%d\t;checkmate in global search (0: no, 1: vct, 2: vc2)\n", infovcthread);
 		fprintf(out, "%d\t;hash autoclear (0: no, 1: yes)\n", hashautoclear);
 		fprintf(out, "%d\t;toolbar postion (0: left, 1: right)\n", toolbarpos);
-		fprintf(out, "%d\t;toolbar item number (<=32)\n", toolbarnum);
-		fprintf(out, "%d\t;hotkey number (<=32)\n", hotkeynum);
+		fprintf(out, "%d\t;toolbar item number (<=64)\n", toolbarnum);
+		fprintf(out, "%d\t;hotkey number (<=64)\n", hotkeynum);
 		fprintf(out, "%d\t;show clock (0: no, 1: yes)\n", showclock);
 		fprintf(out, "%d\t;time increment per move\n", increment);
 		fprintf(out, "%d\t;show forbidden moves\n", showforbidden);
