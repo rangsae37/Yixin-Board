@@ -2444,19 +2444,19 @@ void show_dialog_size(GtkWidget *widget, gpointer data)
 	gtk_table_set_col_spacings(GTK_TABLE(table), 0); /* set the column distance between elements to be 0 */
 	gtk_box_pack_start(GTK_BOX(GTK_DIALOG(dialog)->vbox), table, FALSE, FALSE, 3);
 	
-	label[0] = gtk_label_new(language == 0 ? "Board Height (5 ~ 22):" : _T(clanguage[42]));
+	// label[0] = gtk_label_new(language == 0 ? "Board Height (5 ~ 22):" : _T(clanguage[42]));
 	label[1] = gtk_label_new(language == 0 ? "Board Width (5 ~ 22):" : _T(clanguage[43]));
 	
-	entry[0] = gtk_entry_new();
-	sprintf(text, "%d", boardsizeh);
-	gtk_entry_set_text(GTK_ENTRY(entry[0]), text);
+	// entry[0] = gtk_entry_new();
+	// sprintf(text, "%d", boardsizeh);
+	// gtk_entry_set_text(GTK_ENTRY(entry[0]), text);
 
 	entry[1] = gtk_entry_new();
 	sprintf(text, "%d", boardsizew);
 	gtk_entry_set_text(GTK_ENTRY(entry[1]), text);
 
-	gtk_table_attach_defaults(GTK_TABLE(table), label[0], 0, 1, 0, 1);
-	gtk_table_attach_defaults(GTK_TABLE(table), entry[0], 1, 2, 0, 1);
+	// gtk_table_attach_defaults(GTK_TABLE(table), label[0], 0, 1, 0, 1);
+	// gtk_table_attach_defaults(GTK_TABLE(table), entry[0], 1, 2, 0, 1);
 	gtk_table_attach_defaults(GTK_TABLE(table), label[1], 0, 1, 1, 2);
 	gtk_table_attach_defaults(GTK_TABLE(table), entry[1], 1, 2, 1, 2);
 
@@ -2465,18 +2465,18 @@ void show_dialog_size(GtkWidget *widget, gpointer data)
 	switch(result)
 	{
 		case 1:
-			ptext[0] = gtk_entry_get_text(GTK_ENTRY(entry[0]));
+			// ptext[0] = gtk_entry_get_text(GTK_ENTRY(entry[0]));
 			ptext[1] = gtk_entry_get_text(GTK_ENTRY(entry[1]));
-			if (is_integer(ptext[0]) && is_integer(ptext[1]))
+			if (/*is_integer(ptext[0]) &&*/ is_integer(ptext[1]))
 			{
-				int s1, s2;
-				sscanf(ptext[0], "%d", &s1);
+				int /*s1,*/ s2;
+				// sscanf(ptext[0], "%d", &s1);
 				sscanf(ptext[1], "%d", &s2);
-				if (s1 <= MAX_SIZE && s1 >= 5 && s2 <= MAX_SIZE && s2 >= 5)
+				if (/*s1 <= MAX_SIZE && s1 >= 5 &&*/ s2 <= MAX_SIZE && s2 >= 5)
 				{
-					rboardsizeh = s1;
+					rboardsizeh = s2; // s1;
 					rboardsizew = s2;
-					if(boardsizeh != s1 || boardsizew != s2)
+					if (boardsizeh != /*s1*/ s2 || boardsizew != s2)
 					{
 						respawn = 1;
 						yixin_quit();
