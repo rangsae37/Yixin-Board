@@ -717,7 +717,7 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 						int len = strlen(boardtext[i][j]);
 						char *text = _T(boardtext[i][j]);
 						float scale = 1.0f - 0.1f * max(len - 4, 0);
-						p = draw_overlay_scaled(pixbufboard[y][x], W, H, text, color, weight, scale);
+						p = draw_overlay_scaled(pixbufboard[y][x], W, H, text, color, "bold", scale);
 						gtk_image_set_from_pixbuf(GTK_IMAGE(imageboard[i][j]), p);
 						g_object_unref(G_OBJECT(p));
 						g_free(text);
@@ -5724,7 +5724,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 {
 	gchar *string, *rawstring;
 	gsize size;
-	int x, y;
+	int x, y, x2, y2;
 	int i;
 	char command[80];
 
@@ -6211,10 +6211,10 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			refresh_board();
 		}
 		else {
-			y = x = -999;
-			sscanf(string, "%d,%d", &y, &x);
-			if (y != -999 || x != -999) {
-				if(isneedomit > 0)
+			y = x = y2 = x2 = -999;
+			sscanf(string, "%d,%d %d,%d", &y, &x, &y2, &x2);
+			if (y != -999 && x != -999) {
+				if (isneedomit > 0)
 				{
 					isneedomit --;
 				}
@@ -6235,9 +6235,11 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 					{
 						send_command("yxblockpathreset\n");
 					}
-					if(is_legal_move(y, x))
+					if (is_legal_move(y, x))
 					{
 						make_move(y, x);
+						if (y2 != -999 && x2 != -999 && is_legal_move(y2, x2))
+							make_move(y2, x2);
 						show_database();
 					}
 					else
