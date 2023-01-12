@@ -104,10 +104,10 @@ int imgtypeboard[MAX_SIZE][MAX_SIZE];
 char piecepicname[80] = "piece.bmp";
 char fontname[120] = "";
 /* log */
-GtkWidget *textlog;
-GtkTextBuffer *buffertextlog, *buffertextcommand, *buffertextdbcomment;
-GtkWidget *scrolledtextlog, *scrolledtextcommand, *scrolledtextdbcomment;
-GtkWidget *toolbar;
+GtkWidget *textlog, *textpos, *textdbcomment;
+GtkTextBuffer *buffertextlog, *buffertextcommand, *buffertextdbcomment, *buffertextpos;
+GtkWidget *scrolledtextlog, *scrolledtextcommand, *scrolledtextdbcomment, *scrolledtextpos;
+GtkWidget *toolbar, *posbar;
 
 double hdpiscale = 1.0;
 
@@ -854,8 +854,26 @@ void refresh_board_area(int x0, int y0, int x1, int y1)
 		}
 	}
 }
-void refresh_board() {
+void refresh_board()
+{
 	refresh_board_area(0, 0, boardsizew, boardsizeh);
+}
+
+void update_textpos()
+{
+	char posstring[1024];
+	int offset, accumulatedOffset = 0;
+	sprintf(posstring, "");
+	for (int i = 0; i < piecenum; i++) {
+		sprintf(posstring + accumulatedOffset, "%c%d%n", movepath[i] % boardsizew + 'a', 
+			    boardsizeh - 1 - movepath[i] / boardsizew + 1, &offset);
+		accumulatedOffset += offset;
+	}
+	gtk_text_buffer_set_text(buffertextpos, posstring, -1);
+
+	GtkTextIter iter;
+    gtk_text_buffer_get_end_iter(buffertextpos, &iter);
+    gtk_text_view_scroll_to_iter(textpos, &iter, 0.0, TRUE, 0.0, 0.0);
 }
 
 int is_legal_move(int y, int x)
@@ -886,6 +904,8 @@ void make_move(int y, int x)
 	drawpieceonly = usedatabase;
 	refresh_board();
 	drawpieceonly = 0;
+
+	update_textpos();
 
 	for(i=0; i<8; i+=2)
 	{
@@ -1224,6 +1244,9 @@ void show_dialog_illegal_opening(GtkWidget *window)
 
 void show_dialog_boardtext(GtkWidget *window, int x, int y)
 {
+	if (databasereadonly)
+		return;
+
 	gchar text[80], command[100];
 	const gchar *ptext;
 	GtkWidget *dialog;
@@ -2803,6 +2826,7 @@ void new_game(GtkWidget *widget, gpointer data)
 	isthinking = 0;
 	clock_timer_change_status(2);
 	isneedrestart = 1;
+	update_textpos();
 
 	if (widget != NULL) {
 		refreshboardflag = 0;
@@ -2916,7 +2940,10 @@ void use_database(GtkWidget *widget, gpointer data)
 	usedatabase ^= 1;
 	sprintf(command, "info usedatabase %d\n", usedatabase);
 	send_command(command);
-	refresh_board();
+	if (usedatabase)
+		show_database();
+	else
+		refresh_board();
 	if (usedatabase && showlog)
 		gtk_widget_show(scrolledtextdbcomment);
 	else
@@ -2928,6 +2955,7 @@ void set_database_readonly(GtkWidget *widget, gpointer data)
 	databasereadonly ^= 1;
 	sprintf(command, "info database_readonly %d\n", databasereadonly);
 	send_command(command);
+	gtk_text_view_set_editable(GTK_TEXT_VIEW(textdbcomment), !databasereadonly);
 }
 void view_numeration(GtkWidget *widget, gpointer data)
 {
@@ -2939,6 +2967,7 @@ void view_log(GtkWidget *widget, gpointer data)
 	showlog ^= 1;
 	if (showlog)
 	{
+		gtk_widget_show(posbar);
 		if (usedatabase)
 			gtk_widget_show(scrolledtextdbcomment);
 		gtk_widget_show(scrolledtextlog);
@@ -2947,6 +2976,7 @@ void view_log(GtkWidget *widget, gpointer data)
 	}
 	else
 	{
+		gtk_widget_hide(posbar);
 		gtk_widget_hide(scrolledtextdbcomment);
 		gtk_widget_hide(scrolledtextlog);
 		gtk_widget_hide(scrolledtextcommand);
@@ -2999,6 +3029,7 @@ void change_piece(GtkWidget *widget, gpointer data)
 	show_database();
 
 	stop_thinking(widget, data);
+	if (p == 0) update_textpos();
 }
 
 void stop_thinking(GtkWidget *widget, gpointer data)
@@ -3109,6 +3140,8 @@ void execute_command(gchar *command)
 		printf_log(" getpos\n");
 		printf_log(" putpos\n");
 		printf_log("   %s: putpos f11h7g10h6i10h5j11h8h9h4\n", language ? clanguage[51] : "Example");
+		printf_log(" getposclipboard (getpos from clipboard text)\n");
+		printf_log(" putposclipboard (putpos to clipboard)\n");
 		printf_log(" block\n");
 		printf_log("   %s: block h8\n", language ? clanguage[51] : "Example");
 		printf_log(" block undo\n");
@@ -3346,6 +3379,31 @@ void execute_command(gchar *command)
 		show_forbid();
 		show_database();
 	}
+	else if (yixin_strnicmp(command, "putposclipboard", 15) == 0)
+	{
+		GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+		gchar *posstring = gtk_clipboard_wait_for_text(clipboard);
+		if (posstring != NULL)
+		{
+			gchar *_command = g_strdup_printf("putpos %s", posstring);
+			execute_command(_command);
+			g_free(_command);
+			g_free(posstring);
+		}
+	}
+	else if (yixin_strnicmp(command, "getposclipboard", 15) == 0)
+	{
+		char posstring[1024];
+		int offset, accumulatedOffset = 0;
+		for (i = 0; i < piecenum; i++)
+		{
+			sprintf(posstring + accumulatedOffset, "%c%d%n", movepath[i] % boardsizew + 'a', 
+				    boardsizeh - 1 - movepath[i] / boardsizew + 1, &offset);
+			accumulatedOffset += offset;
+		}
+		GtkClipboard *clipboard = gtk_clipboard_get(GDK_SELECTION_CLIPBOARD);
+		gtk_clipboard_set_text(clipboard, posstring, -1);
+	}
 	else if (yixin_strnicmp(command, "putpos", 6) == 0)
 	{
 		new_game(NULL, NULL);
@@ -3367,7 +3425,9 @@ void execute_command(gchar *command)
 			}
 			y = y - 1;
 			if (x < 0 || x >= boardsizew || y < 0 || y >= boardsizeh) break;
-			make_move(boardsizeh - 1 - y, x);
+			y = boardsizeh - 1 - y;
+			if (board[y][x] != 0) break;
+			make_move(y, x);
 		}
 		show_forbid();
 		show_database();
@@ -4593,6 +4653,29 @@ void dbcomment_changed(GtkWidget *widget, gpointer data)
 	send_command("done\n");
 }
 
+void textpos_changed(GtkWidget *widget, gpointer data)
+{
+	if (isthinking)
+		return;
+	
+	GtkTextIter start, end;
+	gchar *posstr, *command;
+
+	gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffertextpos), &start, &end);
+	posstr = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffertextpos), &start, &end, FALSE);
+	command = g_strdup_printf("putpos %s", posstr);
+	execute_command(command);
+	g_free(posstr);
+	g_free(command);
+}
+
+void textpos_button_clicked(GtkWidget *button, gpointer data) {
+    if (data == 1)
+		execute_command("getposclipboard");
+	else if (data == 2 && !isthinking)
+		execute_command("putposclipboard");
+}
+
 gboolean on_windows_close(GtkWidget *widget, GdkEvent *event, gpointer data) {
 	yixin_quit();
 	return usedatabase != 0;
@@ -5035,7 +5118,7 @@ void create_windowmain()
 
 	GtkToolItem *tools[MAX_TOOLBAR_ITEM];
 
-	GtkWidget *textcommand, *textdbcomment;
+	GtkWidget *textcommand, *btncopypos, *btnsetpos;
 
 	GdkPixbuf *pixbuf;
 
@@ -5546,16 +5629,19 @@ void create_windowmain()
 	gtk_container_add(GTK_CONTAINER(scrolledtextdbcomment), textdbcomment);
 	gtk_widget_set_size_request(scrolledtextdbcomment, (int)(hdpiscale*400), (int)(hdpiscale*100));
 	g_signal_connect(buffertextdbcomment, "end-user-action", G_CALLBACK(dbcomment_changed), NULL);
+	if (databasereadonly)
+		gtk_text_view_set_editable(GTK_TEXT_VIEW(textdbcomment), 0);
 
 	textlog = gtk_text_view_new();
 	PangoFontDescription *fontDesc = pango_font_description_from_string(fontname);
     gtk_widget_modify_font(textlog, fontDesc);
+	pango_font_description_free(fontDesc);
 	gtk_text_view_set_editable(textlog, 0);
 
 	buffertextlog = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textlog));
 	scrolledtextlog = gtk_scrolled_window_new(NULL, NULL);
 	gtk_container_add(GTK_CONTAINER(scrolledtextlog), textlog);
-	gtk_widget_set_size_request(scrolledtextlog, (int)(hdpiscale*400), max(0, size*boardsizeh - (int)(hdpiscale * 150) - (toolbarpos == 1 ? 50 : 0)));
+	gtk_widget_set_size_request(scrolledtextlog, (int)(hdpiscale*400), max(0, size*boardsizeh - (int)(hdpiscale * 200) - (toolbarpos == 1 ? 50 : 0)));
 
 	textcommand = gtk_text_view_new();
 	buffertextcommand = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textcommand));
@@ -5565,9 +5651,34 @@ void create_windowmain()
 	gtk_widget_set_size_request(scrolledtextcommand, (int)(hdpiscale*400), (int)(hdpiscale*50));
 	g_signal_connect(textcommand, "key-release-event", G_CALLBACK(key_command), NULL);
 
+	textpos = gtk_text_view_new();
+	buffertextpos = gtk_text_view_get_buffer(GTK_TEXT_VIEW(textpos));
+	scrolledtextpos = gtk_scrolled_window_new(NULL, NULL);
+	gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolledtextpos), GTK_POLICY_NEVER, GTK_POLICY_ALWAYS);
+	gtk_container_add(GTK_CONTAINER(scrolledtextpos), textpos);
+	gtk_widget_set_size_request(scrolledtextpos, (int)(hdpiscale*400), (int)(hdpiscale*50));
+	gtk_text_view_set_wrap_mode(GTK_TEXT_VIEW(textpos), GTK_WRAP_CHAR);
+	PangoFontDescription *posfontdesc = pango_font_description_from_string("Monospace 10");
+    gtk_widget_modify_font(textpos, posfontdesc);
+    pango_font_description_free(posfontdesc);
+	g_signal_connect(buffertextpos, "end-user-action", G_CALLBACK(textpos_changed), NULL);
+
+	btncopypos = gtk_button_new();
+	btnsetpos = gtk_button_new();
+	gtk_button_set_image(GTK_BUTTON(btncopypos), gtk_image_new_from_icon_name("edit-copy", GTK_ICON_SIZE_BUTTON));
+	gtk_button_set_image(GTK_BUTTON(btnsetpos), gtk_image_new_from_icon_name("edit-paste", GTK_ICON_SIZE_BUTTON));
+	g_signal_connect(btncopypos, "clicked", G_CALLBACK(textpos_button_clicked), 1);
+	g_signal_connect(btnsetpos, "clicked", G_CALLBACK(textpos_button_clicked), 2);
+
+	posbar = gtk_hbox_new(FALSE, 0);
+	gtk_box_pack_start(GTK_BOX(posbar), scrolledtextpos, TRUE, TRUE, 0);
+	gtk_box_pack_start(GTK_BOX(posbar), btncopypos, FALSE, FALSE, 2);
+	gtk_box_pack_start(GTK_BOX(posbar), btnsetpos, FALSE, FALSE, 2);
+
 	vbox[0] = gtk_vbox_new(FALSE, 0);
 	if (toolbarpos == 1)
 		gtk_box_pack_start(GTK_BOX(vbox[0]), toolbar, FALSE, FALSE, 3);
+	gtk_box_pack_start(GTK_BOX(vbox[0]), posbar, FALSE, FALSE, 3);
 	gtk_box_pack_start(GTK_BOX(vbox[0]), scrolledtextdbcomment, FALSE, FALSE, 3);
 	gtk_box_pack_start(GTK_BOX(vbox[0]), scrolledtextlog, TRUE, TRUE, 3);
 	gtk_box_pack_start(GTK_BOX(vbox[0]), scrolledtextcommand, FALSE, FALSE, 3);
@@ -5597,6 +5708,7 @@ void create_windowmain()
 
 	if (!showlog)
 	{
+		gtk_widget_hide(posbar);
 		gtk_widget_hide(scrolledtextdbcomment);
 		gtk_widget_hide(scrolledtextlog);
 		gtk_widget_hide(scrolledtextcommand);
