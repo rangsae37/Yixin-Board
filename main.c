@@ -870,10 +870,6 @@ void update_textpos()
 		accumulatedOffset += offset;
 	}
 	gtk_text_buffer_set_text(buffertextpos, posstring, -1);
-
-	GtkTextIter iter;
-    gtk_text_buffer_get_end_iter(buffertextpos, &iter);
-    gtk_text_view_scroll_to_iter(textpos, &iter, 0.0, TRUE, 0.0, 0.0);
 }
 
 int is_legal_move(int y, int x)
@@ -4684,6 +4680,13 @@ void textpos_changed(GtkWidget *widget, gpointer data)
 	gchar *posstr, *command;
 	gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffertextpos), &start, &end);
 	posstr = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffertextpos), &start, &end, FALSE);
+
+	int j = 0;
+    for (int i = 0; posstr[i]; i++) {
+        if (posstr[i] != ' ')
+            posstr[j++] = posstr[i];
+    }
+    posstr[j] = '\0';
 
 	int valid = 1;
 	for (int i = 0; posstr[i]; )
