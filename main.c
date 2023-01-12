@@ -1303,6 +1303,21 @@ void show_dialog_boardtext(GtkWidget *window, int x, int y)
 	gtk_widget_destroy(dialog);
 }
 
+gboolean show_dbdelall_query()
+{
+	GtkWidget *dialog;
+	gint result;
+	dialog = gtk_message_dialog_new(GTK_WINDOW(windowmain), 
+		GTK_DIALOG_DESTROY_WITH_PARENT | GTK_DIALOG_MODAL, 
+		GTK_MESSAGE_QUESTION, GTK_BUTTONS_YES_NO, 
+		language==0 ? "Are your sure to delete all branches?" : _T(clanguage[116]));
+	gtk_window_set_title(GTK_WINDOW(dialog), "Confirm deleting all branches");
+	gtk_widget_show_all(dialog);
+	result = gtk_dialog_run(GTK_DIALOG(dialog));
+	gtk_widget_destroy(dialog);
+	return result == GTK_RESPONSE_YES;
+}
+
 gboolean on_button_press_windowmain(GtkWidget *widget, GdkEventButton *event, GdkWindowEdge edge)
 {
 	int x, y;
@@ -4362,6 +4377,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all nonwl", 15) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		send_command(yixin_strnicmp(command, "dbdel all nonwl recursive", 25) == 0 ? 
 					"yxdeletedatabaseall nonwlrecursive\n" : 
@@ -4376,6 +4392,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all wlnostep", 18) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		send_command(yixin_strnicmp(command, "dbdel all wlnostep recursive", 28) == 0 ? 
 					"yxdeletedatabaseall wlnosteprecursive\n" : 
@@ -4390,6 +4407,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all wlinstep", 18) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		int recursive = yixin_strnicmp(command, "dbdel all wlinstep recursive", 28) == 0;
 		int matestep = 1;
@@ -4408,6 +4426,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all wl", 12) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		send_command(yixin_strnicmp(command, "dbdel all wl recursive", 22) == 0 ? 
 					"yxdeletedatabaseall wlrecursive\n" : 
@@ -4422,6 +4441,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all w", 11) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		send_command(yixin_strnicmp(command, "dbdel all w recursive", 21) == 0 ? 
 					"yxdeletedatabaseall wrecursive\n" : 
@@ -4436,6 +4456,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all l", 11) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		send_command(yixin_strnicmp(command, "dbdel all l recursive", 21) == 0 ? 
 					"yxdeletedatabaseall lrecursive\n" : 
@@ -4450,6 +4471,7 @@ void execute_command(gchar *command)
 	}
 	else if (yixin_strnicmp(command, "dbdel all", 9) == 0)
 	{
+		if (!show_dbdelall_query()) return;
 		gchar _command[80];
 		send_command("yxdeletedatabaseall\n");
 		for (i = 0; i < piecenum; i++)
