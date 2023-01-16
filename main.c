@@ -1,4 +1,4 @@
-#define _CRT_SECURE_NO_WARNINGS /* for vs */
+﻿#define _CRT_SECURE_NO_WARNINGS /* for vs */
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -3215,6 +3215,7 @@ void execute_command(gchar *command)
 		printf_log(" command [on,off]\n");
 		printf_log(" dbeditcomment [comment...]\n");
 		printf_log(" dbeditlabel [coord] [label]\n");
+		printf_log(" dbeditlabelpoint [label]\n");
 		printf_log(" dbedittag [tag]\n");
 		printf_log(" dbeditval [value]\n");
 		printf_log(" dbeditdep [depth]\n");
@@ -4089,6 +4090,34 @@ void execute_command(gchar *command)
 			send_command("done\n");
 
 			execute_command("dbtext");
+		}
+	}
+	else if (yixin_strnicmp(command, "dbeditlabelpoint", 16) == 0) 
+	{
+		gchar _command[80];
+		int len = strlen(command);
+		if (len >= 14 && piecenum >= 1)
+		{
+			char boardtext[64];
+			if (len >= 64) command[64] = '\0'; // only allow up to 64 characters
+			memset(boardtext, 0, sizeof(boardtext));
+			sscanf(command + 16 + 1, "%s", boardtext);
+			
+			int x = movepath[piecenum-1] / boardsizew;
+			int y = movepath[piecenum-1] % boardsizew;
+			char *text = __invT(boardtext);
+			sprintf(_command, "yxeditlabeldatabase %d,%d %s\n", x, y, text);
+			g_free(text);
+			
+			send_command(_command); 
+			for (i = 0; i < piecenum - 1; i++) 
+			{
+				sprintf(_command, "%d,%d\n", movepath[i] / boardsizew, movepath[i] % boardsizew); 
+				send_command(_command);
+			}
+			send_command("done\n");
+
+			show_database();
 		}
 	}
 	else if (yixin_strnicmp(command, "dbeditlabel", 11) == 0) 
