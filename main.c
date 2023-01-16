@@ -1,4 +1,4 @@
-﻿#define _CRT_SECURE_NO_WARNINGS /* for vs */
+#define _CRT_SECURE_NO_WARNINGS /* for vs */
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
@@ -80,6 +80,7 @@ int showforbidden = 1;
 int showboardtext = 1;
 int showtoolbarboth = 1;
 int showwarning = 1;
+int showdbdelconfirm = 1;
 int checktimeout = 1;
 int toolbarpos = 1;
 int fontbasesize = 10;
@@ -1301,6 +1302,9 @@ void show_dialog_boardtext(GtkWidget *window, int x, int y)
 
 gboolean show_dbdelall_query()
 {
+	if (showdbdelconfirm == 0)
+		return TRUE;
+
 	GtkWidget *dialog;
 	gint result;
 	dialog = gtk_message_dialog_new(GTK_WINDOW(windowmain), 
@@ -4760,9 +4764,10 @@ void save_setting()
 		fprintf(out, "%d\t;time increment per move\n", increment);
 		fprintf(out, "%d\t;show forbidden moves\n", showforbidden);
 		fprintf(out, "%d\t;check timeout\n", checktimeout);
-		fprintf(out, "%d\t;use database moves\n", usedatabase);
-		fprintf(out, "%d\t;enable database read-only mode\n", databasereadonly);
-		fprintf(out, "%d\t;show database baord texts\n", showboardtext);
+		fprintf(out, "%d\t;use database moves (0: no, 1: yes)\n", usedatabase);
+		fprintf(out, "%d\t;enable database read-only mode (0: no, 1: yes)\n", databasereadonly);
+		fprintf(out, "%d\t;show database baord texts (0: no, 1: yes)\n", showboardtext);
+		fprintf(out, "%d\t;show database delall confirmation (0: no, 1: yes)\n", showdbdelconfirm);
 		fprintf(out, "%d\t;record debug log\n", recorddebuglog);
 		fprintf(out, "%d\t;hdpi scale\n", (int)(hdpiscale * 100 + 1e-10));
 		fprintf(out, "%d\t;symmetric nbest for the 5th moves\n", nbestsym);
@@ -6482,6 +6487,8 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		if (databasereadonly < 0 || databasereadonly > 1) databasereadonly = 0;
 		showboardtext = read_int_from_file(in);
 		if (showboardtext < 0 || showboardtext > 1) showboardtext = 1;
+		showdbdelconfirm = read_int_from_file(in);
+		if (showdbdelconfirm < 0 || showdbdelconfirm > 1) showdbdelconfirm = 1;
 		recorddebuglog = read_int_from_file(in);
 		if (recorddebuglog < 0 || recorddebuglog > 1) recorddebuglog = 0;
 		t = read_int_from_file(in);
