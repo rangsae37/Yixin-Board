@@ -8,7 +8,6 @@
 #include "yixin.h"
 #include "resource.h" /* not needed if you are not provided with resource.h, Yixin.rc and icon.ico */
 
-typedef long long I64;
 #define MAX_SIZE 22
 #define CAUTION_NUM 5  //0..CAUTION_NUM
 #define MIN_SPLIT_DEPTH 5
@@ -37,10 +36,10 @@ int inforule = 0;
 int specialrule = 0;
 int infopondering = 0;
 int infovcthread = 0;
-int timeoutturn = 10000;
-int timeoutmatch = 2000000;
+int64_t timeoutturn = 10000;
+int64_t timeoutmatch = 2000000;
+int64_t maxnode = 1000000000;
 int maxdepth = 100;
-int maxnode = 1000000000;
 int maxthreadnum = 1; //1..maxthreadnum
 int maxhashsize = 30;
 int increment = 0;
@@ -118,10 +117,10 @@ GtkWidget *savingdialog;
 GtkWidget *windowclock;
 GtkWidget *clocklabel[4];
 GtkWidget *playerlabel[2];
-int timercomputerturn;
-int timercomputermatch;
-int timerhumanturn;
-int timerhumanmatch;
+int64_t timercomputerturn;
+int64_t timercomputermatch;
+int64_t timerhumanturn;
+int64_t timerhumanmatch;
 int timercomputerincrement;
 int timerhumanincrement;
 int timerstart;
@@ -1038,7 +1037,7 @@ void show_dialog_swap_query2(GtkWidget *window)
 		isthinking = 1;
 		clock_timer_change_status(1);
 		isneedrestart = 0;
-		sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+		sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 		send_command(command);
 		if (hashautoclear) send_command("yxhashclear\n");
 		sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -1088,7 +1087,7 @@ void show_dialog_swap_query(GtkWidget *window)
 				isthinking = 1;
 				clock_timer_change_status(1);
 				isneedrestart = 0;
-				sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+				sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 				send_command(command);
 				if (hashautoclear) send_command("yxhashclear\n");
 				sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -1362,7 +1361,7 @@ gboolean on_button_press_windowmain(GtkWidget *widget, GdkEventButton *event, Gd
 							isthinking = 1;
 							clock_timer_change_status(1);
 							isneedrestart = 0;
-							sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+							sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 							send_command(command);
 							if (hashautoclear) send_command("yxhashclear\n");
 							sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -1392,7 +1391,7 @@ gboolean on_button_press_windowmain(GtkWidget *widget, GdkEventButton *event, Gd
 							isthinking = 1;
 							clock_timer_change_status(1);
 							isneedrestart = 0;
-							sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+							sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 							send_command(command);
 							if (hashautoclear) send_command("yxhashclear\n");
 							sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -1426,7 +1425,7 @@ gboolean on_button_press_windowmain(GtkWidget *widget, GdkEventButton *event, Gd
 						isthinking = 1;
 						clock_timer_change_status(1);
 						isneedrestart = 0;
-						sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+						sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 						send_command(command);
 						if (hashautoclear) send_command("yxhashclear\n");
 						sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -1563,7 +1562,7 @@ gboolean on_button_press_windowmain(GtkWidget *widget, GdkEventButton *event, Gd
 								isthinking = 1;
 								clock_timer_change_status(1);
 								isneedrestart = 0;
-								sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+								sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 								send_command(command);
 								if (hashautoclear) send_command("yxhashclear\n");
 								sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -1581,7 +1580,7 @@ gboolean on_button_press_windowmain(GtkWidget *widget, GdkEventButton *event, Gd
 							}
 							else
 							{
-								sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+								sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 								send_command(command);
 								if (hashautoclear) send_command("yxhashclear\n");
 								sprintf(command, "turn %d,%d\n", y, x);
@@ -1623,13 +1622,13 @@ void set_level(int x)
 	levelchoice = x;
 	if(levelchoice == 1)
 	{
-		sprintf(command, "INFO timeout_turn %d\n", timeoutturn);
+		sprintf(command, "INFO timeout_turn %lld\n", timeoutturn);
 		send_command(command);
-		sprintf(command, "INFO timeout_match %d\n", timeoutmatch);
+		sprintf(command, "INFO timeout_match %lld\n", timeoutmatch);
 		send_command(command);
-		sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+		sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 		send_command(command);
-		sprintf(command, "INFO max_node %d\n", maxnode); //now it should not be -1
+		sprintf(command, "INFO max_node %lld\n", maxnode); //now it should not be -1
 		send_command(command);
 		sprintf(command, "INFO max_depth %d\n", maxdepth);
 		send_command(command);
@@ -1645,50 +1644,58 @@ void set_level(int x)
 			send_command(command);
 			break;
 		case 2:
-			sprintf(command, "INFO max_node %d\n", 10000);
+			sprintf(command, "INFO max_node %lld\n", 100 * 1000); // 100k
 			send_command(command);
 			break;
 		case 3:
-			sprintf(command, "INFO max_node %d\n", 20000);
+			sprintf(command, "INFO max_node %lld\n", 500 * 1000); // 500k
 			send_command(command);
 			break;
 		case 4:
-			sprintf(command, "INFO max_node %d\n", 30000); //if the speed is 500k, then it will take at most 60s
+			sprintf(command, "INFO max_node %lld\n", 1 * 1000000); // 1M
 			send_command(command);
 			break;
 		case 5:
-			sprintf(command, "INFO max_node %d\n", 60000);
+			sprintf(command, "INFO max_node %lld\n", 5 * 1000000); // 5M
 			send_command(command);
 			break;
 		case 6:
-			sprintf(command, "INFO max_node %d\n", 120000);
+			sprintf(command, "INFO max_node %lld\n", 10 * 1000000); // 10M
 			send_command(command);
 			break;
 		case 7:
-			sprintf(command, "INFO max_node %d\n", 240000);
+			sprintf(command, "INFO max_node %lld\n", 20 * 1000000); // 20M
 			send_command(command);
 			break;
 		case 8:
-			sprintf(command, "INFO max_node %d\n", 1920000);
+			sprintf(command, "INFO max_node %lld\n", 50 * 1000000); // 50M
 			send_command(command);
 			break;
 		case 9:
-			sprintf(command, "INFO max_node %d\n", 38400000);
+			sprintf(command, "INFO max_node %lld\n", 100 * 1000000); // 100M
 			send_command(command);
 			break;
 		case 10:
-			sprintf(command, "INFO max_node %d\n", 500000000);
+			sprintf(command, "INFO max_node %lld\n", 200 * 1000000); // 200M
 			send_command(command);
-			break;				
+			break;
+		case 11:
+			sprintf(command, "INFO max_node %lld\n", 500 * 1000000); // 500M
+			send_command(command);
+			break;
+		case 12:
+			sprintf(command, "INFO max_node %lld\n", 1000 * 1000000); // 1000M
+			send_command(command);
+			break;
 		}
 		timeoutmatch = 100000000;
 		timeoutturn = 2000000;
 		increment = 0;
-		sprintf(command, "INFO timeout_match %d\n", timeoutmatch);
+		sprintf(command, "INFO timeout_match %lld\n", timeoutmatch);
 		send_command(command);
-		sprintf(command, "INFO time_left %d\n", timeoutmatch);
+		sprintf(command, "INFO time_left %lld\n", timeoutmatch);
 		send_command(command);
-		sprintf(command, "INFO timeout_turn %d\n", timeoutturn);
+		sprintf(command, "INFO timeout_turn %lld\n", timeoutturn);
 		send_command(command);
 		sprintf(command, "INFO max_depth %d\n", boardsizeh * boardsizew);
 		send_command(command);
@@ -1840,8 +1847,8 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 
 	labeltimeturn[0] = gtk_label_new(language==0?"Turn time:":_T(clanguage[21]));
 	entrytimeturn = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(entrytimeturn), 6);
-	sprintf(text, "%d", timeoutturn/1000);
+	gtk_entry_set_width_chars(GTK_ENTRY(entrytimeturn), 9);
+	sprintf(text, "%lld", timeoutturn/1000);
 	gtk_entry_set_text(GTK_ENTRY(entrytimeturn), text);
 	labeltimeturn[1] = gtk_label_new(language==0?"s":_T(clanguage[22]));
 	gtk_misc_set_alignment(GTK_MISC(labeltimeturn[0]), 1, 0.5);
@@ -1849,8 +1856,8 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 
 	labeltimematch[0] = gtk_label_new(language==0?"Match time:":_T(clanguage[23]));
 	entrytimematch = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(entrytimematch), 6);
-	sprintf(text, "%d", timeoutmatch/1000);
+	gtk_entry_set_width_chars(GTK_ENTRY(entrytimematch), 9);
+	sprintf(text, "%lld", timeoutmatch/1000);
 	gtk_entry_set_text(GTK_ENTRY(entrytimematch), text);
 	labeltimematch[1] = gtk_label_new(language==0?"s":_T(clanguage[22]));
 	gtk_misc_set_alignment(GTK_MISC(labeltimematch[0]), 1, 0.5);
@@ -1867,8 +1874,8 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 
 	labelmaxnode[0] = gtk_label_new(language==0?"Max node number:":_T(clanguage[26]));
 	entrymaxnode = gtk_entry_new();
-	gtk_entry_set_width_chars(GTK_ENTRY(entrymaxnode), 6);
-	sprintf(text, "%d", maxnode/1000);
+	gtk_entry_set_width_chars(GTK_ENTRY(entrymaxnode), 9);
+	sprintf(text, "%lld", maxnode/1000);
 	gtk_entry_set_text(GTK_ENTRY(entrymaxnode), text);
 	labelmaxnode[1] = gtk_label_new(language==0?"K":_T(clanguage[27]));
 	gtk_misc_set_alignment(GTK_MISC(labelmaxnode[0]), 1, 0.5);
@@ -1883,7 +1890,7 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 	gtk_misc_set_alignment(GTK_MISC(labelincrement[0]), 1, 0.5);
 	gtk_misc_set_alignment(GTK_MISC(labelincrement[1]), 0, 0.5);
 
-	scalelevel = gtk_hscale_new_with_range(1, 10, 1);
+	scalelevel = gtk_hscale_new_with_range(1, 12, 1);
 	if (levelchoice < 2)
 		gtk_range_set_value(GTK_RANGE(scalelevel), 1);
 	else
@@ -2038,20 +2045,16 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 				ptext = gtk_entry_get_text(GTK_ENTRY(entrytimeturn));
 				if(is_integer(ptext))
 				{
-					sscanf(ptext, "%d", &timeoutturn);
-					if (timeoutturn > 100000) timeoutturn = 100000;
-					if (timeoutturn < 0) timeoutturn = 0;
-					timeoutturn *= 1000;
+					sscanf(ptext, "%lld", &timeoutturn);
+					timeoutturn = 1000 * max(timeoutturn, 0);
 					if (timeoutturn == 0) timeoutturn = 100;
 				}
 				ptext = gtk_entry_get_text(GTK_ENTRY(entrytimematch));
 				if(is_integer(ptext))
 				{
-					sscanf(ptext, "%d", &timeoutmatch);
-					if(timeoutmatch > 1000000) timeoutmatch = 1000000;
-					if(timeoutmatch < 1) timeoutmatch = 1;
-					timeoutmatch *= 1000;
-					if(timeoutmatch < timeoutturn) timeoutmatch = timeoutturn;
+					sscanf(ptext, "%lld", &timeoutmatch);
+					timeoutmatch = 1000 * max(timeoutmatch, 1);
+					if (timeoutmatch < timeoutturn) timeoutmatch = timeoutturn;
 				}
 				ptext = gtk_entry_get_text(GTK_ENTRY(entrymaxdepth));
 				if(is_integer(ptext))
@@ -2063,16 +2066,14 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 				ptext = gtk_entry_get_text(GTK_ENTRY(entrymaxnode));
 				if(is_integer(ptext))
 				{
-					sscanf(ptext, "%d", &maxnode);
-					if(maxnode > 1000000) maxnode = 1000000;
-					if(maxnode < 1) maxnode = 1;
-					maxnode *= 1000;
+					sscanf(ptext, "%lld", &maxnode);
+					maxnode = 1000 * max(maxnode, 1);
 				}
 				ptext = gtk_entry_get_text(GTK_ENTRY(entryincrement));
 				if (is_integer(ptext))
 				{
 					sscanf(ptext, "%d", &increment);
-					if (increment > 500) increment = 500;
+					if (increment > 10000) increment = 10000;
 					if (increment < 0) increment = 0;
 					increment *= 1000;
 				}
@@ -3955,14 +3956,12 @@ void execute_command(gchar *command)
 	{
 		change_piece(windowmain, (gpointer)3);
 	}
-	/*
 	else if (yixin_strnicmp(command, "sleep", 5) == 0)
 	{
-		int n;
-		sscanf(command + 5 + 1, "%d", &n);
+		int64_t ms;
+		sscanf(command + 5 + 1, "%lld", &ms);
 		//TODO
 	}
-	*/
 	else if (yixin_strnicmp(command, "bestline", 8) == 0)
 	{
 		printf_log("BESTLINE: %s ", bestline);
@@ -4768,10 +4767,10 @@ void save_setting()
 		fprintf(out, "%d\t;computer play black (0: no, 1: yes)\n", computerside & 1);
 		fprintf(out, "%d\t;computer play white (0: no, 1: yes)\n", computerside >> 1);
 		fprintf(out, "%d\t;level (0: unlimited time 1: custom level 2-: predefined level)\n", levelchoice);
-		fprintf(out, "%d\t;time limit (turn)\n", timeoutturn / 1000);
-		fprintf(out, "%d\t;time limit (match)\n", timeoutmatch / 1000);
+		fprintf(out, "%lld\t;time limit (turn)\n", timeoutturn / 1000);
+		fprintf(out, "%lld\t;time limit (match)\n", timeoutmatch / 1000);
 		fprintf(out, "%d\t;max depth\n", maxdepth);
-		fprintf(out, "%d\t;max node\n", maxnode);
+		fprintf(out, "%lld\t;max node\n", maxnode);
 		fprintf(out, "%d\t;style (rash 0 ~ %d cautious)\n", cautionfactor, CAUTION_NUM);
 		fprintf(out, "%d\t;toolbar style (0: only icon, 1: both icon and words, 2: both with horizontally stacked)\n", showtoolbarboth);
 		fprintf(out, "%d\t;show log (0: no, 1: yes)\n", showlog);
@@ -4841,7 +4840,7 @@ void clock_label_refresh()
 	char t[80];
 	int h_turn, m_turn, s_turn;
 	int h_match, m_match, s_match;
-	int tl_turn, tl_match;
+	int64_t tl_turn, tl_match;
 
 	if ((timercomputerturn / 60 / 60 / 1000) >= 100)
 	{
@@ -5869,7 +5868,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			isthinking = 1;
 			clock_timer_change_status(1);
 			isneedrestart = 0;
-			sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+			sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 			send_command(command);
 			if (hashautoclear) send_command("yxhashclear\n");
 			sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -5935,7 +5934,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 			isthinking = 1;
 			clock_timer_change_status(1);
 			isneedrestart = 0;
-			sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+			sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 			send_command(command);
 			if (hashautoclear) send_command("yxhashclear\n");
 			sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -6045,7 +6044,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 				isthinking = 1;
 				clock_timer_change_status(1);
 				isneedrestart = 0;
-				sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+				sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 				send_command(command);
 				if (hashautoclear) send_command("yxhashclear\n");
 				sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -6329,7 +6328,7 @@ gboolean iochannelout_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 					{
 						isthinking = 1;
 						clock_timer_change_status(1);
-						sprintf(command, "INFO time_left %d\n", timeoutmatch - timercomputermatch + timercomputerincrement);
+						sprintf(command, "INFO time_left %lld\n", timeoutmatch - timercomputermatch + timercomputerincrement);
 						send_command(command);
 						if(hashautoclear) send_command("yxhashclear\n");
 						sprintf(command, "start %d %d\n", boardsizew, boardsizeh);
@@ -6363,10 +6362,10 @@ gboolean iochannelerr_watch(GIOChannel *channel, GIOCondition cond, gpointer dat
 	}
 	return TRUE;
 }
-int read_int_from_file(FILE *in)
+int64_t read_int_from_file(FILE *in)
 {
+	int64_t num = 0;
 	int flag = 0;
-	int num = 0;
 	char c;
 
 	while(fscanf(in, "%c", &c) != EOF)
@@ -6459,14 +6458,13 @@ void load_setting(int def_boardsizeh, int def_boardsizew, int def_language, int 
 		levelchoice = read_int_from_file(in);
 		if(levelchoice < 0 || levelchoice > 11) levelchoice = 1;
 		timeoutturn = read_int_from_file(in) * 1000;
-		if (timeoutturn == 0) timeoutturn = 100;
-		if(timeoutturn < 0 || timeoutturn > 100000000) timeoutturn = 10000;
+		if(timeoutturn <= 0) timeoutturn = 1000000;
 		timeoutmatch = read_int_from_file(in) * 1000;
-		if(timeoutmatch <= 0 || timeoutmatch > 1000000000) timeoutmatch = 1000000000;
+		if(timeoutmatch <= 0) timeoutmatch = 1000000000;
 		maxdepth = read_int_from_file(in);
 		if(maxdepth < 2 || maxdepth > boardsizeh*boardsizew) maxdepth = boardsizeh*boardsizew;
 		maxnode = read_int_from_file(in);
-		if(maxnode < 1000 || maxnode > 1000000000) maxnode = 1000000000;
+		if(maxnode < 1000) maxnode = 1000000000;
 		cautionfactor = read_int_from_file(in);
 		if(cautionfactor < 0 || cautionfactor > CAUTION_NUM) cautionfactor = 1;
 		showtoolbarboth = read_int_from_file(in);
