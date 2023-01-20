@@ -20,6 +20,7 @@ void change_side_menu(int flag, GtkWidget *w);
 void clock_timer_change_status(int status);
 void clock_timer_init();
 void execute_command(gchar *command);
+gint sleep_timeout(gpointer data);
 void change_piece(GtkWidget *widget, gpointer data);
 void stop_thinking(GtkWidget *widget, gpointer data);
 GdkPixbuf * copy_subpixbuf(GdkPixbuf *_src, int src_x, int src_y, int width, int height);

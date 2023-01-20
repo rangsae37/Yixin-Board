@@ -3095,10 +3095,33 @@ void custom_function(char *command)
 
 		t = command[r + 1];
 		command[r + 1] = 0;
-		execute_command(command + l);
-		command[r + 1] = t;
+		if (yixin_strnicmp(command + l, "sleep", 5) == 0)
+		{
+			int milliseconds = 0;
+			sscanf(command + l + 5 + 1, "%d", &milliseconds);
+
+			command[r + 1] = t;
+			if (milliseconds > 1)
+			{
+				gchar *commandqueue = g_strdup(command + r);
+				g_timeout_add(milliseconds, sleep_timeout, commandqueue);
+				break;
+			}
+		}
+		else
+		{
+			execute_command(command + l);
+			command[r + 1] = t;
+		}
 		l = r;
 	}
+}
+
+gint sleep_timeout(gpointer data)
+{
+	custom_function((char *)data);
+	g_free(data);
+	return FALSE;
 }
 
 void hotkey_function(GtkWidget *widget, gpointer data)
@@ -3136,6 +3159,10 @@ void execute_command(gchar *command)
 	{
 		printf_log(command);
 		send_command(command);
+	}
+	else if (yixin_strnicmp(command, "echo", 4) == 0)
+	{
+		print_log(command + 5);
 	}
 	else if (yixin_strnicmp(command, "help", 4) == 0)
 	{
@@ -3226,8 +3253,9 @@ void execute_command(gchar *command)
 		printf_log(" libtodb [filename]\n");
 		printf_log(" forbid\n");
 		printf_log(" forbid undo\n");
-		//printf_log(" sleep [second]\n");
-		//printf_log("   %s: sleep 5\n", language ? clanguage[51] : "Example");
+		printf_log(" echo [a line of text]\n");
+		printf_log(" sleep [millisecond]\n");
+		printf_log("   %s: sleep 5000\n", language ? clanguage[51] : "Example");
 		printf_log("\n");
 	}
 	else if (yixin_strnicmp(command, "clear", 5) == 0)
@@ -3956,12 +3984,6 @@ void execute_command(gchar *command)
 	{
 		change_piece(windowmain, (gpointer)3);
 	}
-	else if (yixin_strnicmp(command, "sleep", 5) == 0)
-	{
-		int64_t ms;
-		sscanf(command + 5 + 1, "%lld", &ms);
-		//TODO
-	}
 	else if (yixin_strnicmp(command, "bestline", 8) == 0)
 	{
 		printf_log("BESTLINE: %s ", bestline);
@@ -4649,11 +4671,7 @@ gboolean key_command(GtkWidget *widget, GdkEventKey *event, gpointer data)
 		gtk_text_buffer_get_bounds(GTK_TEXT_BUFFER(buffertextcommand), &start, &end);
 		command = gtk_text_buffer_get_text(GTK_TEXT_BUFFER(buffertextcommand), &start, &end, FALSE);
 		
-		char *cmd = strtok(command, "\n");
-		while (cmd) {
-			execute_command(cmd);
-			cmd = strtok(NULL, "\n");
-		}
+		custom_function(command);
 
 		gtk_text_buffer_delete(buffertextcommand, &start, &end);
 		g_free(command);
