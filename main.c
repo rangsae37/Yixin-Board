@@ -1724,16 +1724,6 @@ void set_threadnum(int x)
 	send_command(command);
 }
 
-void set_threadsplitdepth(int x)
-{
-	gchar command[80];
-	if(x < MIN_SPLIT_DEPTH) x = MIN_SPLIT_DEPTH;
-	if(x > MAX_SPLIT_DEPTH) x = MAX_SPLIT_DEPTH;
-	threadsplitdepth = x;
-	sprintf(command, "INFO thread_split_depth %d\n", threadsplitdepth);
-	send_command(command);
-}
-
 void set_hashsize(int x)
 {
 	gchar command[80];
@@ -1956,17 +1946,13 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 	gtk_range_set_value(GTK_RANGE(scalecaution), cautionfactor);
 	gtk_widget_set_size_request(scalecaution, 100, -1);
 
-	scalethreads = gtk_hscale_new_with_range(1, maxthreadnum, 1);
-	gtk_range_set_value(GTK_RANGE(scalethreads), threadnum);
-	gtk_widget_set_size_request(scalethreads, 100, -1);
+	GtkAdjustment *adjustment_threads = gtk_adjustment_new(threadnum, 1, maxthreadnum, 1, 1, 1);
+	scalethreads = gtk_spin_button_new(adjustment_threads, 1, 0);
+	//gtk_widget_set_size_request(scalethreads, 100, -1);
 
-	//scalesplitdepth = gtk_hscale_new_with_range(MIN_SPLIT_DEPTH, MAX_SPLIT_DEPTH, 1);
-	//gtk_range_set_value(GTK_RANGE(scalesplitdepth), threadsplitdepth);
-	//gtk_widget_set_size_request(scalesplitdepth, 100, -1);
-
-	scalehash = gtk_hscale_new_with_range(0, maxhashsize, 1);
-	gtk_range_set_value(GTK_RANGE(scalehash), hashsize);
-	gtk_widget_set_size_request(scalehash, 100, -1);
+	GtkAdjustment *adjustment_hashsize = gtk_adjustment_new(hashsize, 0, maxhashsize, 1, 1, 1);
+	scalehash = gtk_spin_button_new(adjustment_hashsize, 1, 0);
+	//gtk_widget_set_size_request(scalehash, 100, -1);
 
 	radiovcthread[0] = gtk_radio_button_new_with_label(NULL, language == 0 ? "None" : _T(clanguage[87]));
 	radiovcthread[1] = gtk_radio_button_new_with_label(gtk_radio_button_get_group(GTK_RADIO_BUTTON(radiovcthread[0])), language == 0 ? "Check VCT" : _T(clanguage[86]));
@@ -2096,11 +2082,9 @@ void show_dialog_settings(GtkWidget *widget, gpointer data)
 			else
 				set_cautionfactor((int)(gtk_range_get_value(GTK_RANGE(scalecaution))+1e-8));
 
-			set_threadnum((int)(gtk_range_get_value(GTK_RANGE(scalethreads))+1e-8));
+			set_threadnum((int)(gtk_spin_button_get_value(GTK_SPIN_BUTTON(scalethreads))+1e-8));
 
-			set_threadsplitdepth((int)(gtk_range_get_value(GTK_RANGE(scalesplitdepth))+1e-8));
-
-			set_hashsize((int)(gtk_range_get_value(GTK_RANGE(scalehash))+1e-8));
+			set_hashsize((int)(gtk_spin_button_get_value(GTK_SPIN_BUTTON(scalehash))+1e-8));
 
 			set_pondering(gtk_toggle_button_get_active(hbox[5]) == TRUE ? 1 : 0);
 
