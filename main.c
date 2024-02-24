@@ -3249,6 +3249,7 @@ void execute_command(gchar *command)
 		printf_log(" dbeditdep [depth]\n");
 		printf_log(" dbsetbestmove\n");
 		printf_log(" dbclearbestmove\n");
+		printf_log(" dbtotxt all [filename]\n");
 		printf_log(" dbtotxt [filename]\n");
 		printf_log(" libtodb [filename]\n");
 		printf_log(" forbid\n");
@@ -4245,6 +4246,30 @@ void execute_command(gchar *command)
 		if (i > 0)
 		{
 			send_command("yxdbtopos\n");
+			send_command(_command);
+		}
+	}
+	else if (yixin_strnicmp(command, "dbtotxt all", 11) == 0)
+	{
+		gchar _command[80];
+		sprintf(_command, "%s", command + 11 + 1);
+
+		i = strlen(_command);
+		while (i > 0)
+		{
+			if (_command[i - 1] == '\n' || _command[i - 1] == '\r')
+			{
+				_command[i - 1] = 0;
+				i--;
+			}
+			else
+				break;
+		}
+		_command[i] = '\n';
+		_command[i + 1] = 0;
+		if (i > 0)
+		{
+			send_command("yxdbtotxtall\n");
 			send_command(_command);
 		}
 	}
